@@ -11,6 +11,7 @@ import {
   User,
   UserFilled,
   PieChart,
+  ceBuilding,
 } from "@element-plus/icons-vue";
 
 const app = createApp(App);
@@ -23,5 +24,6 @@ app.component("EpDocumentIcon", Document);
 app.component("EpUserIcon", User);
 app.component("EpUserFilled", UserFilled);
 app.component("EpPieChart", PieChart);
+app.component("EpceBuilding", ceBuilding);
 
 app.mount("#app");

@@ -4,9 +4,26 @@
       <div class="login-header">
         <h2>MarkMaster</h2>
       </div>
-      <el-form :model="form" @submit.prevent="onSubmit" label-width="100px">
-        <el-form-item label="Email">
-          <el-input v-model="form.email" autocomplete="off" />
+
+      <el-form :model="form" @submit.prevent="onSubmit" label-width="120px">
+        <el-form-item label="Role">
+          <el-select v-model="form.role" placeholder="Select Role">
+            <el-option label="Student" value="student" />
+            <el-option label="Lecturer" value="lecturer" />
+            <el-option label="Academic Advisor" value="academicAdvisor" />
+            <el-option label="Admin" value="admin" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item v-if="form.role === 'student'" label="Matric No.">
+          <el-input v-model="form.matricNo" autocomplete="off" />
+        </el-form-item>
+
+        <el-form-item
+          v-if="['lecturer', 'admin', 'academicAdvisor'].includes(form.role)"
+          label="Staff No."
+        >
+          <el-input v-model="form.staffNo" autocomplete="off" />
         </el-form-item>
 
         <el-form-item label="Password">
@@ -21,38 +38,69 @@
         <el-form-item>
           <el-button type="primary" native-type="submit" block>Login</el-button>
         </el-form-item>
-      </el-form>
 
-      <div class="register-link">
-        <span>Don't have an account?</span>
-        <el-button type="text" @click="goRegister">Register</el-button>
-      </div>
+        <!-- 两个链接分两行 -->
+        <div class="links-block">
+          <div class="register-link">
+            <span>Don't have an account?</span>
+            <el-button type="text" @click="goRegister">Register</el-button>
+          </div>
+
+          <el-button type="text" class="forgot-link" @click="goForgetPassword">
+            Forgot Password?
+          </el-button>
+        </div>
+      </el-form>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { reactive } from "vue";
+import { reactive, watch } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
 
 const form = reactive({
-  email: "",
+  role: "",
+  matricNo: "",
+  staffNo: "",
   password: "",
 });
 
+watch(
+  () => form.role,
+  (newRole) => {
+    if (newRole !== "student") {
+      form.matricNo = "";
+    }
+    if (!["lecturer", "admin", "academicAdvisor"].includes(newRole)) {
+      form.staffNo = "";
+    }
+  }
+);
+
 function onSubmit() {
-  if (form.email && form.password) {
+  if (
+    form.role &&
+    form.password &&
+    ((form.role === "student" && form.matricNo) ||
+      (["lecturer", "admin", "academicAdvisor"].includes(form.role) &&
+        form.staffNo))
+  ) {
     localStorage.setItem("token", "fake-token");
     router.push("/");
   } else {
-    alert("Please enter email and password");
+    alert("Please fill in all required fields.");
   }
 }
 
 function goRegister() {
   router.push("/register");
+}
+
+function goForgetPassword() {
+  router.push("/forget-password");
 }
 </script>
 
@@ -126,10 +174,10 @@ function goRegister() {
 }
 
 .register-link {
-  margin-top: 20px;
-  text-align: center;
   font-size: 15px;
   color: #7e7e7e;
+  display: flex;
+  align-items: center;
   user-select: none;
 }
 
@@ -137,17 +185,38 @@ function goRegister() {
   margin-right: 6px;
 }
 
-.el-button--text {
+.register-link .el-button--text {
   color: #7e7e7e;
   font-weight: 500;
 }
 
-.el-button--text:hover {
+.register-link .el-button--text:hover {
   color: #d6a77a;
   background-color: transparent;
   text-decoration: underline;
 }
 
+.links-block {
+  margin-top: 1rem;
+  user-select: none;
+}
+
+.forgot-link {
+  display: inline-block;
+  margin-top: 6px;
+  margin-left: 26px; /* 左缩进，和 Register 按钮左对齐 */
+  color: #7e7e7e;
+  font-weight: 500;
+  padding: 0;
+}
+
+.forgot-link:hover {
+  color: #d6a77a;
+  background-color: transparent;
+  text-decoration: underline;
+}
+
+/* 滚动条样式 */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

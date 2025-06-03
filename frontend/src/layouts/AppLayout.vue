@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <!-- Header -->
-    <div class="app-header">🎓 Course Mark Management</div>
+    <div class="app-header">🎓 MarkMastert</div>
 
     <div class="app-body">
       <!-- Sidebar -->
@@ -39,6 +39,11 @@
             <el-menu-item index="marks">
               <el-icon><PieChart /></el-icon>
               <span>Marks</span>
+            </el-menu-item>
+
+            <el-menu-item index="advisorworkspace">
+              <el-icon><User /></el-icon>
+              <span>Advisor Workspace</span>
             </el-menu-item>
 
             <el-sub-menu index="assessments">
@@ -91,7 +96,6 @@
       <!-- Main content area -->
       <div class="app-main">
         <div class="main-content">
-          <!-- 确保 router-view 正确渲染子路由 -->
           <router-view v-slot="{ Component }">
             <component :is="Component" v-if="Component" />
             <div v-else class="no-content">
@@ -124,12 +128,24 @@ const router = useRouter();
 const route = useRoute();
 const activeMenu = ref("dashboard");
 
-// 初始化时设置正确的 activeMenu
+function normalizePath(path) {
+  // 规范化路由路径，全部小写，去除前后斜杠
+  return path.toLowerCase().replace(/^\/|\/$/g, "");
+}
+
+function updateActiveMenu() {
+  let path = normalizePath(route.path);
+  if (!path) {
+    path = "dashboard";
+  }
+  activeMenu.value = path;
+  console.log("Current active menu:", path);
+}
+
 onMounted(() => {
   updateActiveMenu();
 });
 
-// 监听路由变化
 watch(
   () => route.path,
   () => {
@@ -137,34 +153,26 @@ watch(
   }
 );
 
-function updateActiveMenu() {
-  let path = route.path.slice(1); // 移除开头的斜杠
-  if (!path || path === "") {
-    path = "dashboard";
-  }
-  activeMenu.value = path;
-  console.log("Current active menu:", path); // 调试用
-}
-
 function handleMenuSelect(index) {
-  console.log("Menu selected:", index); // 调试用
   if (index === "logout") {
     localStorage.removeItem("token");
     router.replace("/login");
   } else {
     router.push("/" + index).catch((err) => {
-      console.log("Router push error:", err);
+      // 忽略重复导航错误
+      if (err.name !== "NavigationDuplicated") {
+        console.error(err);
+      }
     });
   }
 }
 </script>
 
 <style scoped>
-/* Header 样式 */
 .app-header {
   height: 60px;
-  background-color: #f7f7f7; /* 浅灰色背景 */
-  color: #333; /* 深灰文字 */
+  background-color: #f7f7f7;
+  color: #333;
   font-weight: 600;
   font-size: 20px;
   line-height: 60px;
@@ -188,7 +196,7 @@ function handleMenuSelect(index) {
 
 .app-sidebar {
   width: 220px;
-  background-color: #4a4a4a; /* 深灰侧边栏 */
+  background-color: #4a4a4a;
   color: #ddd;
   display: flex;
   flex-direction: column;
@@ -203,7 +211,7 @@ function handleMenuSelect(index) {
 .main-menu {
   border: none;
   width: 100%;
-  background-color: transparent !important; /* 清除原色 */
+  background-color: transparent !important;
 }
 
 .logout-container {
@@ -211,22 +219,19 @@ function handleMenuSelect(index) {
   margin-top: auto;
 }
 
-/* 菜单字体颜色 */
 :deep(.el-menu-item),
 :deep(.el-sub-menu__title) {
   color: #ddd !important;
 }
 
-/* 菜单激活和悬停高亮色 */
 :deep(.el-menu-item.is-active),
 :deep(.el-menu-item:hover),
 :deep(.el-sub-menu.is-opened > .el-sub-menu__title),
 :deep(.el-sub-menu__title:hover) {
-  background-color: #d6a77a !important; /* 暖橙茶色 */
-  color: #3e2f1c !important; /* 深咖啡色 */
+  background-color: #d6a77a !important;
+  color: #3e2f1c !important;
 }
 
-/* 图标颜色 */
 :deep(.el-menu-item.is-active) > .el-icon,
 :deep(.el-menu-item:hover) > .el-icon,
 :deep(.el-sub-menu__title:hover) > .el-icon {
@@ -238,7 +243,7 @@ function handleMenuSelect(index) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #f9f6f1; /* 米白主区域背景 */
+  background-color: #f9f6f1;
 }
 
 .main-content {
@@ -261,7 +266,6 @@ function handleMenuSelect(index) {
   font-size: 14px;
 }
 
-/* scrollbar 样式配合深色侧栏 */
 .menu-container::-webkit-scrollbar {
   width: 6px;
 }
@@ -279,7 +283,6 @@ function handleMenuSelect(index) {
   background: #a88c6f;
 }
 
-/* 保持全局基础样式 */
 * {
   box-sizing: border-box;
 }
@@ -295,7 +298,6 @@ body {
   height: 100%;
 }
 
-/* 菜单项高度调整 */
 :deep(.el-menu-item) {
   height: 50px;
   line-height: 50px;

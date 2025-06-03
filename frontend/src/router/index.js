@@ -6,6 +6,7 @@ import AppLayout from "@/layouts/AppLayout.vue";
 // Public views
 import LoginView from "@/views/LoginView.vue";
 import RegisterView from "@/views/RegisterView.vue";
+import ForgetPasswordView from "@/views/ForgetPasswordView.vue";
 
 // Main views
 import DashboardView from "@/views/DashboardView.vue";
@@ -16,6 +17,7 @@ import MarksView from "@/views/MarksView.vue";
 import CAComponentsView from "@/views/CAComponentsView.vue";
 import FinalExamView from "@/views/FinalExamView.vue";
 import AddCourseView from "@/views/AddCourseView.vue";
+import AdvisorWorkspaceView from "@/views/AdvisorWorkspaceView.vue";
 
 // Admin views
 import UserManagementView from "@/views/admin/UserManagementView.vue";
@@ -35,6 +37,11 @@ const routes = [
     component: RegisterView,
   },
   {
+    path: "/forget-password",
+    name: "ForgetPassword",
+    component: ForgetPasswordView,
+  },
+  {
     path: "/",
     component: AppLayout,
     meta: { requiresAuth: true },
@@ -44,6 +51,11 @@ const routes = [
         path: "dashboard",
         name: "Dashboard",
         component: DashboardView,
+      },
+      {
+        path: "advisorworkspace",
+        name: "AdvisorWorkspace",
+        component: AdvisorWorkspaceView,
       },
       {
         path: "courses",
@@ -111,7 +123,7 @@ const router = createRouter({
   routes,
 });
 
-// Auth guard
+// 路由守卫，基于 token 鉴权
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem("token");
 
