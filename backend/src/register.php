@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/db.php';
 
-//  Get JSON input
+// Get JSON input
 $input = json_decode(file_get_contents('php://input'), true);
 
 if (!$input || empty($input['email']) || empty($input['password']) || empty($input['role'])) {
@@ -13,8 +13,11 @@ if (!$input || empty($input['email']) || empty($input['password']) || empty($inp
 $email = $input['email'];
 $password = password_hash($input['password'], PASSWORD_BCRYPT);
 $role = $input['role'];
+$name = $input['name'] ?? null;
 $matricNo = $input['matricNo'] ?? null;
 $staffNo = $input['staffNo'] ?? null;
+$phone = $input['phone'] ?? null;
+$profilePic = $input['profile_pic'] ?? null;
 
 try {
     $pdo = getPDO();
@@ -28,9 +31,10 @@ try {
     }
 
     // Insert new user
-    $sql = "INSERT INTO users (email, password, role, matric_no, staff_no) VALUES (?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO users (email, password, role, matric_no, staff_no, name, phone, profile_pic)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$email, $password, $role, $matricNo, $staffNo]);
+    $stmt->execute([$email, $password, $role, $matricNo, $staffNo, $name, $phone, $profilePic]);
 
     echo json_encode(['success' => true, 'message' => 'User registered successfully']);
 } catch (PDOException $e) {

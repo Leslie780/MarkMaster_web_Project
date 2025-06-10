@@ -31,6 +31,37 @@
         </el-form-item>
 
         <el-form-item
+          label="Full Name"
+          prop="name"
+          :rules="[
+            {
+              required: true,
+              message: 'Please enter your name',
+              trigger: 'blur',
+            },
+          ]"
+        >
+          <el-input v-model="form.name" placeholder="Enter your full name" />
+        </el-form-item>
+
+        <el-form-item
+          label="Phone"
+          prop="phone"
+          :rules="[
+            {
+              required: true,
+              message: 'Please enter your phone number',
+              trigger: 'blur',
+            },
+          ]"
+        >
+          <el-input
+            v-model="form.phone"
+            placeholder="Enter your phone number"
+          />
+        </el-form-item>
+
+        <el-form-item
           v-if="form.role === 'student'"
           label="Matric No."
           prop="matricNo"
@@ -45,7 +76,6 @@
           <el-input
             v-model="form.matricNo"
             placeholder="Enter your Matric No."
-            autocomplete="off"
           />
         </el-form-item>
 
@@ -61,11 +91,7 @@
             },
           ]"
         >
-          <el-input
-            v-model="form.staffNo"
-            placeholder="Enter your Staff No."
-            autocomplete="off"
-          />
+          <el-input v-model="form.staffNo" placeholder="Enter your Staff No." />
         </el-form-item>
 
         <el-form-item
@@ -84,11 +110,7 @@
             },
           ]"
         >
-          <el-input
-            v-model="form.email"
-            placeholder="Enter your email"
-            autocomplete="off"
-          />
+          <el-input v-model="form.email" placeholder="Enter your email" />
         </el-form-item>
 
         <el-form-item
@@ -106,7 +128,6 @@
             v-model="form.password"
             type="password"
             placeholder="Enter password"
-            autocomplete="off"
             show-password
           />
         </el-form-item>
@@ -126,8 +147,7 @@
           <el-input
             v-model="form.confirmPassword"
             type="password"
-            placeholder="Confirm your password"
-            autocomplete="off"
+            placeholder="Confirm password"
             show-password
           />
         </el-form-item>
@@ -168,6 +188,9 @@ export default {
         confirmPassword: "",
         matricNo: "",
         staffNo: "",
+        name: "",
+        phone: "",
+        profile_pic: "",
       },
     };
   },
@@ -189,6 +212,9 @@ export default {
             email: this.form.email,
             password: this.form.password,
             role: this.form.role,
+            name: this.form.name,
+            phone: this.form.phone,
+            // profile_pic: this.form.profile_pic,
           };
 
           if (this.form.role === "student") {
