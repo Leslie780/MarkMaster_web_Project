@@ -21,8 +21,6 @@ import AdvisorWorkspaceView from "@/views/AdvisorWorkspaceView.vue";
 
 // Admin views
 import UserManagementView from "@/views/admin/UserManagementView.vue";
-import AssignLecturersView from "@/views/admin/AssignLecturersView.vue";
-import SystemLogsView from "@/views/admin/SystemLogsView.vue";
 import ResetPasswordView from "@/views/admin/ResetPasswordsView.vue";
 
 const routes = [
@@ -98,16 +96,6 @@ const routes = [
         path: "admin/user-management",
         name: "UserManagement",
         component: UserManagementView,
-      },
-      {
-        path: "admin/assign-lecturers",
-        name: "AssignLecturers",
-        component: AssignLecturersView,
-      },
-      {
-        path: "admin/system-logs",
-        name: "SystemLogs",
-        component: SystemLogsView,
       },
       {
         path: "admin/reset-password",

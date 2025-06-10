@@ -65,10 +65,6 @@
               <el-menu-item index="admin/user-management"
                 >Manage Users</el-menu-item
               >
-              <el-menu-item index="admin/assign-lecturers"
-                >Assign Lecturers</el-menu-item
-              >
-              <el-menu-item index="admin/system-logs">System Logs</el-menu-item>
               <el-menu-item index="admin/reset-password"
                 >Reset Password</el-menu-item
               >

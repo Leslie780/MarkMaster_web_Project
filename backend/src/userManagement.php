@@ -17,16 +17,25 @@ $pdo = getPDO();
 $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
-    case 'GET':
-        try {
+   case 'GET':
+    try {
+        $role = $_GET['role'] ?? null;
+
+        if ($role) {
+            $stmt = $pdo->prepare("SELECT id, name, email, role, matric_no, staff_no, phone, status, profile_pic, created_at FROM users WHERE role = ? ORDER BY id DESC");
+            $stmt->execute([$role]);
+        } else {
             $stmt = $pdo->query("SELECT id, name, email, role, matric_no, staff_no, phone, status, profile_pic, created_at FROM users ORDER BY id DESC");
-            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            echo json_encode(['success' => true, 'users' => $users]);
-        } catch (PDOException $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         }
-        break;
+
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'users' => $users]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    }
+    break;
+
 
 case 'POST':
     $input = json_decode(file_get_contents('php://input'), true);

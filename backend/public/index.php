@@ -1,7 +1,5 @@
 <?php
-// public/index.php
 
-// set the content type to JSON
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
@@ -48,6 +46,15 @@ switch ($path) {
             echo json_encode(['success' => false, 'message' => 'Method not allowed']);
         }
         break;
+        case'/course-management':
+        if (in_array($method, ['GET', 'POST', 'PUT', 'DELETE'])) {
+            require_once __DIR__ . '/../src/courseManagement.php';
+        } else {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        }
+        break;
+    
 
     default:
         http_response_code(404);
