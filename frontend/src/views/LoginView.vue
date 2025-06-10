@@ -2,11 +2,26 @@
   <div class="login-container">
     <el-card class="login-card" shadow="hover">
       <div class="login-header">
-        <h2>MarkMaster</h2>
+        <h2>Login - MarkMaster</h2>
       </div>
 
-      <el-form :model="form" @submit.prevent="onSubmit" label-width="120px">
-        <el-form-item label="Role">
+      <el-form
+        :model="form"
+        ref="loginForm"
+        label-width="120px"
+        @submit.prevent="onSubmit"
+      >
+        <el-form-item
+          label="Role"
+          prop="role"
+          :rules="[
+            {
+              required: true,
+              message: 'Please select your role',
+              trigger: 'change',
+            },
+          ]"
+        >
           <el-select v-model="form.role" placeholder="Select Role">
             <el-option label="Student" value="student" />
             <el-option label="Lecturer" value="lecturer" />
@@ -15,40 +30,80 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item v-if="form.role === 'student'" label="Matric No.">
-          <el-input v-model="form.matricNo" autocomplete="off" />
+        <el-form-item
+          v-if="form.role === 'student'"
+          label="Matric No."
+          prop="matricNo"
+          :rules="[
+            {
+              required: true,
+              message: 'Please input your Matric No.',
+              trigger: 'blur',
+            },
+          ]"
+        >
+          <el-input
+            v-model="form.matricNo"
+            placeholder="Enter your Matric No."
+            autocomplete="off"
+          />
         </el-form-item>
 
         <el-form-item
           v-if="['lecturer', 'admin', 'academicAdvisor'].includes(form.role)"
           label="Staff No."
+          prop="staffNo"
+          :rules="[
+            {
+              required: true,
+              message: 'Please input your Staff No.',
+              trigger: 'blur',
+            },
+          ]"
         >
-          <el-input v-model="form.staffNo" autocomplete="off" />
+          <el-input
+            v-model="form.staffNo"
+            placeholder="Enter your Staff No."
+            autocomplete="off"
+          />
         </el-form-item>
 
-        <el-form-item label="Password">
+        <el-form-item
+          label="Password"
+          prop="password"
+          :rules="[
+            {
+              required: true,
+              message: 'Please input your password',
+              trigger: 'blur',
+            },
+          ]"
+        >
           <el-input
             v-model="form.password"
             type="password"
-            autocomplete="off"
+            placeholder="Enter your password"
             show-password
           />
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" native-type="submit" block>Login</el-button>
+          <el-button
+            type="primary"
+            native-type="submit"
+            :loading="loading"
+            block
+            >Login</el-button
+          >
         </el-form-item>
 
-        <!-- 两个链接分两行 -->
-        <div class="links-block">
-          <div class="register-link">
-            <span>Don't have an account?</span>
-            <el-button type="text" @click="goRegister">Register</el-button>
-          </div>
-
-          <el-button type="text" class="forgot-link" @click="goForgetPassword">
-            Forgot Password?
-          </el-button>
+        <div style="text-align: right; margin-bottom: 1rem">
+          <el-button type="text" @click="goRegister"
+            >Don't have an account? Register</el-button
+          >
+          <el-button type="text" @click="goForgetPassword"
+            >Forgot Password?</el-button
+          >
         </div>
       </el-form>
     </el-card>
@@ -56,10 +111,11 @@
 </template>
 
 <script setup>
-import { reactive, watch } from "vue";
+import { reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
+const loading = ref(false);
 
 const form = reactive({
   role: "",
@@ -71,27 +127,45 @@ const form = reactive({
 watch(
   () => form.role,
   (newRole) => {
-    if (newRole !== "student") {
-      form.matricNo = "";
-    }
-    if (!["lecturer", "admin", "academicAdvisor"].includes(newRole)) {
+    if (newRole !== "student") form.matricNo = "";
+    if (!["lecturer", "admin", "academicAdvisor"].includes(newRole))
       form.staffNo = "";
-    }
   }
 );
 
-function onSubmit() {
-  if (
-    form.role &&
-    form.password &&
-    ((form.role === "student" && form.matricNo) ||
-      (["lecturer", "admin", "academicAdvisor"].includes(form.role) &&
-        form.staffNo))
-  ) {
-    localStorage.setItem("token", "fake-token");
-    router.push("/");
-  } else {
+async function onSubmit() {
+  let identifier = "";
+  if (form.role === "student") identifier = form.matricNo;
+  else if (["lecturer", "admin", "academicAdvisor"].includes(form.role))
+    identifier = form.staffNo;
+
+  if (!identifier || !form.password) {
     alert("Please fill in all required fields.");
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const response = await fetch("http://localhost:8085/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier,
+        password: form.password,
+      }),
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      router.push("/");
+    } else {
+      alert(data.message || "Login failed");
+    }
+  } catch (error) {
+    alert("Error: " + error.message);
+  } finally {
+    loading.value = false;
   }
 }
 

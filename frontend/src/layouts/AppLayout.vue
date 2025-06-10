@@ -123,46 +123,51 @@ import {
 } from "@element-plus/icons-vue";
 import { useRouter, useRoute } from "vue-router";
 import { ref, watch, onMounted } from "vue";
+import { ElMessageBox } from "element-plus";
 
 const router = useRouter();
 const route = useRoute();
 const activeMenu = ref("dashboard");
 
 function normalizePath(path) {
-  // 规范化路由路径，全部小写，去除前后斜杠
   return path.toLowerCase().replace(/^\/|\/$/g, "");
 }
 
 function updateActiveMenu() {
   let path = normalizePath(route.path);
-  if (!path) {
-    path = "dashboard";
-  }
+  if (!path) path = "dashboard";
   activeMenu.value = path;
-  console.log("Current active menu:", path);
 }
 
-onMounted(() => {
-  updateActiveMenu();
-});
+onMounted(updateActiveMenu);
 
 watch(
   () => route.path,
-  () => {
-    updateActiveMenu();
-  }
+  () => updateActiveMenu()
 );
 
-function handleMenuSelect(index) {
+async function handleMenuSelect(index) {
   if (index === "logout") {
-    localStorage.removeItem("token");
-    router.replace("/login");
+    try {
+      await ElMessageBox.confirm(
+        "Are you sure you want to log out?",
+        "Confirm",
+        {
+          confirmButtonText: "Yes",
+          cancelButtonText: "Cancel",
+          type: "warning",
+        }
+      );
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      router.replace("/login");
+    } catch {
+      // 用户点击取消
+    }
   } else {
     router.push("/" + index).catch((err) => {
-      // 忽略重复导航错误
-      if (err.name !== "NavigationDuplicated") {
-        console.error(err);
-      }
+      if (err.name !== "NavigationDuplicated") console.error(err);
     });
   }
 }

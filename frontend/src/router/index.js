@@ -123,13 +123,13 @@ const router = createRouter({
   routes,
 });
 
-// 路由守卫，基于 token 鉴权
+//  router guider ，based on token authentication
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem("token");
+  const user = localStorage.getItem("user");
 
-  if (to.meta.requiresAuth && !token) {
+  if (to.meta.requiresAuth && !user) {
     next("/login");
-  } else if ((to.path === "/login" || to.path === "/register") && token) {
+  } else if ((to.path === "/login" || to.path === "/register") && user) {
     next("/dashboard");
   } else {
     next();

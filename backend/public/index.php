@@ -1,31 +1,41 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
+// public/index.php
 
-use Slim\Factory\AppFactory;
-use Nyholm\Psr7\Factory\Psr17Factory;
-use Nyholm\Psr7Server\ServerRequestCreator;
+header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 
-// 设置 PSR-17 工厂
-$psr17Factory = new Psr17Factory();
-AppFactory::setResponseFactory($psr17Factory);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
-// 创建 App 实例
-$app = AppFactory::create();
+// router logic
+$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$method = $_SERVER['REQUEST_METHOD'];
 
-// 创建 ServerRequest 实例
-$creator = new ServerRequestCreator(
-    $psr17Factory, // ServerRequestFactory
-    $psr17Factory, // UriFactory
-    $psr17Factory, // UploadedFileFactory
-    $psr17Factory  // StreamFactory
-);
-$request = $creator->fromGlobals();
+switch ($path) {
+    case '/register':
+        if ($method === 'POST') {
+            require_once __DIR__ . '/../src/register.php';
+        } else {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        }
+        break;
 
-// 定义路由
-$app->get('/', function ($request, $response, $args) {
-    $response->getBody()->write("Slim 4 API Ready!");
-    return $response;
-});
+    case '/login':
+        if ($method === 'POST') {
+            require_once __DIR__ . '/../src/login.php';
+        } else {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        }
+        break;
 
-// 运行 App
-$app->run($request);
+    default:
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Route not found']);
+        break;
+}
