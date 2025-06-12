@@ -54,6 +54,38 @@ switch ($path) {
             echo json_encode(['success' => false, 'message' => 'Method not allowed']);
         }
         break;
+        case '/course-students':
+        if (in_array($method, ['GET', 'POST', 'OPTIONS'])) {
+            require_once __DIR__ . '/../src/course_students.php';
+        } else {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        }
+        break;
+    case '/assessment-components':
+        if (in_array($method, ['GET', 'POST', 'PUT', 'DELETE'])) {
+            require_once __DIR__ . '/../src/assessment.php';
+        } else {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        }
+        break;
+    case '/assessment-scores':
+        if (in_array($method, ['GET', 'POST', 'PUT', 'DELETE'])) {
+            require_once __DIR__ . '/../src/assessment.php';
+        } else {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        }
+        break;
+    case '/final-exam': 
+        if (in_array($method, ['GET', 'POST', 'PUT', 'DELETE'])) {
+            require_once __DIR__ . '/../src/final_exam.php';
+        } else {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        }
+        break;
     
 
     default:

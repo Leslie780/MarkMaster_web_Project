@@ -1,16 +1,18 @@
 <?php
+session_start(); // 开启 session
+
 require_once __DIR__ . '/db.php';
 
 header("Content-Type: application/json");
-
-// 获取 JSON 输入 get JSON input
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
+
 $input = json_decode(file_get_contents('php://input'), true);
 
 if (!$input || empty($input['identifier']) || empty($input['password'])) {
@@ -19,14 +21,12 @@ if (!$input || empty($input['identifier']) || empty($input['password'])) {
     exit;
 }
 
-$identifier = $input['identifier'];  // it could be email  email, matric_no or staff_no
+$identifier = $input['identifier'];
 $password = $input['password'];
 
 try {
     $pdo = getPDO();
 
-    // 用 identifier 查询用户（支持 email、matric_no 或 staff_no）
-    //using identifier to find user
     $stmt = $pdo->prepare("
         SELECT * FROM users 
         WHERE email = :id OR matric_no = :id OR staff_no = :id
@@ -41,10 +41,28 @@ try {
         exit;
     }
 
-    // login success return user data without password
-    unset($user['password']);
-    echo json_encode(['success' => true, 'user' => $user]);
+    // 登录成功 - 存入 SESSION
+    $_SESSION['user_id'] = $user['id'];
+    $_SESSION['user_role'] = $user['role'];
+    $_SESSION['user_name'] = $user['name'];
+
+    // 构造返回 JSON
+    unset($user['password']); // 安全考虑
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Login successful',
+        'code' => 200,
+        'user' => [
+            'id' => $user['id'],
+            'name' => $user['name'],
+            'email' => $user['email'],
+            'role' => $user['role'],
+            'matric_no' => $user['matric_no'] ?? null,
+            'staff_no' => $user['staff_no'] ?? null
+        ]
+    ]);
 } catch (PDOException $e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'DB error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
 }

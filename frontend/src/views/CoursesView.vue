@@ -3,7 +3,13 @@
     <el-card class="main-card">
       <div class="header">
         <h2>Course Management</h2>
-        <el-button type="primary" @click="goAddCourse">+ Add Course</el-button>
+        <el-button
+          type="primary"
+          @click="goAddCourse"
+          v-if="user.role === 'admin'"
+        >
+          + Add Course
+        </el-button>
       </div>
 
       <!-- 筛选区 -->
@@ -106,6 +112,7 @@
                 size="small"
                 type="danger"
                 @click="deleteCourse(scope.row.id)"
+                v-if="user.role === 'admin'"
                 >Delete</el-button
               >
             </template>
@@ -136,6 +143,8 @@
                   size="small"
                   type="danger"
                   @click="deleteCourse(course.id)"
+                  v-bind:data-allow-mismatch="true"
+                  v-if="user.role === 'admin'"
                   >Delete</el-button
                 >
               </div>
@@ -165,6 +174,7 @@ const loading = ref(false);
 const viewMode = ref("table"); // 'table' or 'card'
 const yearFilter = ref("");
 const creditFilter = ref("");
+const user = JSON.parse(localStorage.getItem("user") || "{}");
 
 const academicYears = Array.from({ length: 5 }, (_, i) => {
   const current = new Date().getFullYear();
@@ -173,7 +183,6 @@ const academicYears = Array.from({ length: 5 }, (_, i) => {
   return `${start}/${start + 1}`;
 });
 
-// 获取所有课程
 const fetchCourses = async () => {
   loading.value = true;
   try {
@@ -190,7 +199,7 @@ const fetchCourses = async () => {
   }
 };
 
-// 获取所有讲师
+// 获取所有讲师 getLecturers
 const fetchLecturers = async () => {
   try {
     const res = await axios.get(
@@ -211,14 +220,14 @@ onMounted(() => {
   fetchLecturers();
 });
 
-// 讲师ID转讲师名
+// 讲师ID转讲师名 lecturerid convert to  lecturer name
 function lecturerName(id) {
   const arr = Array.isArray(lecturers.value) ? lecturers.value : [];
   const user = arr.find((u) => u.id == id);
   return user && user.name ? String(user.name) : String(id);
 }
 
-// 搜索和筛选
+// 搜索和筛选 search and filter
 const filteredCourses = computed(() => {
   let list = [...courses.value];
 

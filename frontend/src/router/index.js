@@ -11,7 +11,7 @@ import ForgetPasswordView from "@/views/ForgetPasswordView.vue";
 // Main views
 import DashboardView from "@/views/DashboardView.vue";
 import CoursesView from "@/views/CoursesView.vue";
-import LecturersView from "@/views/LecturersView.vue";
+import CourseManagementView from "@/views/CourseManagement.vue";
 import StudentsView from "@/views/StudentsView.vue";
 import MarksView from "@/views/MarksView.vue";
 import CAComponentsView from "@/views/CAComponentsView.vue";
@@ -66,9 +66,9 @@ const routes = [
         component: AddCourseView,
       },
       {
-        path: "lecturers",
-        name: "Lecturers",
-        component: LecturersView,
+        path: "course_management",
+        name: "CourseManagement",
+        component: CourseManagementView,
       },
       {
         path: "students",

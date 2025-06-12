@@ -23,12 +23,12 @@
 
             <el-menu-item index="courses">
               <el-icon><Document /></el-icon>
-              <span>Courses</span>
+              <span>Courses List</span>
             </el-menu-item>
 
-            <el-menu-item index="lecturers">
-              <el-icon><User /></el-icon>
-              <span>Lecturers</span>
+            <el-menu-item index="course_management">
+              <el-icon><UserFilled /></el-icon>
+              <span>Course Management</span>
             </el-menu-item>
 
             <el-menu-item index="students">

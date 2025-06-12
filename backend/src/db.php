@@ -1,7 +1,11 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 function getPDO() {
     $host = 'localhost';
-    $db   = 'markmaster'; 	// nama database anda
+    $db   = 'markmaster1'; 	// nama database anda
     $user = 'root';		//userid
     $pass = '';		//password anda
     $charset = 'utf8mb4';
