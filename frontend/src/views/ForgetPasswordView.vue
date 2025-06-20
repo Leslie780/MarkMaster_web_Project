@@ -3,17 +3,25 @@
     <el-card class="forget-password-card" shadow="hover">
       <div class="forget-password-header">
         <h2>Reset Password</h2>
-        <p>Please enter your registered email to receive a reset link.</p>
+        <p>Please enter your registered email and a new password.</p>
       </div>
 
-      <el-form :model="form" @submit.prevent="onSubmit" label-width="100px">
+      <el-form :model="form" @submit.prevent="onSubmit" label-width="120px">
         <el-form-item label="Email">
           <el-input v-model="form.email" autocomplete="off" />
         </el-form-item>
 
+        <el-form-item label="New Password">
+          <el-input
+            v-model="form.new_password"
+            type="password"
+            autocomplete="new-password"
+          />
+        </el-form-item>
+
         <el-form-item>
           <el-button type="primary" native-type="submit" block
-            >Send Reset Link</el-button
+            >Reset Password</el-button
           >
         </el-form-item>
       </el-form>
@@ -28,19 +36,35 @@
 <script setup>
 import { reactive } from "vue";
 import { useRouter } from "vue-router";
+import axios from "axios";
 
 const router = useRouter();
 
 const form = reactive({
   email: "",
+  new_password: "",
 });
 
-function onSubmit() {
-  if (form.email) {
-    alert(`A reset link has been sent to: ${form.email}`);
-    router.push("/login");
-  } else {
-    alert("Please enter your email address.");
+async function onSubmit() {
+  if (!form.email || !form.new_password) {
+    alert("Please enter both email and new password.");
+    return;
+  }
+
+  try {
+    const res = await axios.post("http://localhost:8085/forgot-password", {
+      email: form.email,
+      new_password: form.new_password,
+    });
+
+    if (res.data.success) {
+      alert("Password updated successfully.");
+      router.push("/login");
+    } else {
+      alert(res.data.message || "Failed to reset password.");
+    }
+  } catch (err) {
+    alert("Server error. Please try again.");
   }
 }
 
@@ -127,7 +151,7 @@ function goLogin() {
   text-align: center;
 }
 
-/* Scrollbar style for consistency */
+/* Scrollbar style */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

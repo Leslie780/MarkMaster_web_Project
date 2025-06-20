@@ -27,3 +27,19 @@ app.component("EpPieChart", PieChart);
 app.component("EpceBuilding", ceBuilding);
 
 app.mount("#app");
+const observerErrorHandler = () => {
+  try {
+    window.addEventListener("error", (e) => {
+      if (
+        e.message ===
+        "ResizeObserver loop completed with undelivered notifications."
+      ) {
+        e.stopImmediatePropagation();
+      }
+    });
+  } catch (err) {
+    console.warn("ResizeObserver error handler not installed", err);
+  }
+};
+
+observerErrorHandler();

@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 
 function getPDO() {
     $host = 'localhost';
-    $db   = 'markmaster1'; 	// nama database anda
+    $db   = 'markmaster2'; 	// nama database anda
     $user = 'root';		//userid
     $pass = '';		//password anda
     $charset = 'utf8mb4';

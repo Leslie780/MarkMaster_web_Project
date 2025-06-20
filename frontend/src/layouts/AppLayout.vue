@@ -1,8 +1,31 @@
 <template>
   <div class="app-container">
     <!-- Header -->
-    <div class="app-header">🎓 MarkMastert</div>
+    <div class="app-header">
+      <div class="header-left">🎓 MarkMastert</div>
 
+      <!-- 用户信息下拉（右上角） -->
+      <div class="header-right">
+        <el-dropdown trigger="click">
+          <span class="user-info">
+            👤 {{ username }}
+            <el-icon><ArrowDown /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="goToResetPassword"
+                >Change Password</el-dropdown-item
+              >
+              <el-dropdown-item divided @click="switchAccount"
+                >Switch Account</el-dropdown-item
+              >
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
+    </div>
+
+    <!-- Body -->
     <div class="app-body">
       <!-- Sidebar -->
       <div class="app-sidebar">
@@ -20,32 +43,26 @@
               <el-icon><HomeFilled /></el-icon>
               <span>Dashboard</span>
             </el-menu-item>
-
             <el-menu-item index="courses">
               <el-icon><Document /></el-icon>
               <span>Courses List</span>
             </el-menu-item>
-
             <el-menu-item index="course_management">
               <el-icon><UserFilled /></el-icon>
               <span>Course Management</span>
             </el-menu-item>
-
             <el-menu-item index="students">
               <el-icon><UserFilled /></el-icon>
               <span>Students</span>
             </el-menu-item>
-
             <el-menu-item index="marks">
               <el-icon><PieChart /></el-icon>
               <span>Marks</span>
             </el-menu-item>
-
             <el-menu-item index="advisorworkspace">
               <el-icon><User /></el-icon>
               <span>Advisor Workspace</span>
             </el-menu-item>
-
             <el-sub-menu index="assessments">
               <template #title>
                 <el-icon><Edit /></el-icon>
@@ -56,7 +73,6 @@
               >
               <el-menu-item index="final-exam">Final Exam</el-menu-item>
             </el-sub-menu>
-
             <el-sub-menu index="admin">
               <template #title>
                 <el-icon><Setting /></el-icon>
@@ -89,7 +105,7 @@
         </div>
       </div>
 
-      <!-- Main content area -->
+      <!-- Main Content -->
       <div class="app-main">
         <div class="main-content">
           <router-view v-slot="{ Component }">
@@ -116,6 +132,7 @@ import {
   SwitchButton,
   Edit,
   Setting,
+  ArrowDown,
 } from "@element-plus/icons-vue";
 import { useRouter, useRoute } from "vue-router";
 import { ref, watch, onMounted } from "vue";
@@ -124,22 +141,23 @@ import { ElMessageBox } from "element-plus";
 const router = useRouter();
 const route = useRoute();
 const activeMenu = ref("dashboard");
+const username = ref("User");
 
-function normalizePath(path) {
-  return path.toLowerCase().replace(/^\/|\/$/g, "");
-}
-
-function updateActiveMenu() {
-  let path = normalizePath(route.path);
-  if (!path) path = "dashboard";
-  activeMenu.value = path;
-}
-
-onMounted(updateActiveMenu);
+onMounted(() => {
+  const user = JSON.parse(localStorage.getItem("user"));
+  if (user) {
+    username.value =
+      user.name || user.email || user.staff_no || user.matric_no || "User";
+  }
+});
 
 watch(
   () => route.path,
-  () => updateActiveMenu()
+  () => {
+    const path =
+      route.path.replace(/^\/|\/$/g, "").toLowerCase() || "dashboard";
+    activeMenu.value = path;
+  }
 );
 
 async function handleMenuSelect(index) {
@@ -159,7 +177,7 @@ async function handleMenuSelect(index) {
       localStorage.removeItem("user");
       router.replace("/login");
     } catch {
-      // 用户点击取消
+      // cancel
     }
   } else {
     router.push("/" + index).catch((err) => {
@@ -167,26 +185,55 @@ async function handleMenuSelect(index) {
     });
   }
 }
+
+function switchAccount() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  router.replace("/login");
+}
+
+function goToResetPassword() {
+  router.push("/admin/reset-password");
+}
 </script>
 
 <style scoped>
-.app-header {
-  height: 60px;
-  background-color: #f7f7f7;
-  color: #333;
-  font-weight: 600;
-  font-size: 20px;
-  line-height: 60px;
-  padding: 0 20px;
-  flex-shrink: 0;
-  border-bottom: 1px solid #ddd;
-}
-
 .app-container {
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 60px;
+  background-color: #f7f7f7;
+  color: #333;
+  font-weight: 600;
+  font-size: 20px;
+  padding: 0 20px;
+  border-bottom: 1px solid #ddd;
+}
+
+.header-left {
+  flex-shrink: 0;
+}
+
+.header-right {
+  font-size: 14px;
+  color: #555;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .app-body {
@@ -220,25 +267,6 @@ async function handleMenuSelect(index) {
   margin-top: auto;
 }
 
-:deep(.el-menu-item),
-:deep(.el-sub-menu__title) {
-  color: #ddd !important;
-}
-
-:deep(.el-menu-item.is-active),
-:deep(.el-menu-item:hover),
-:deep(.el-sub-menu.is-opened > .el-sub-menu__title),
-:deep(.el-sub-menu__title:hover) {
-  background-color: #d6a77a !important;
-  color: #3e2f1c !important;
-}
-
-:deep(.el-menu-item.is-active) > .el-icon,
-:deep(.el-menu-item:hover) > .el-icon,
-:deep(.el-sub-menu__title:hover) > .el-icon {
-  color: #3e2f1c !important;
-}
-
 .app-main {
   flex: 1;
   display: flex;
@@ -267,45 +295,36 @@ async function handleMenuSelect(index) {
   font-size: 14px;
 }
 
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  color: #ddd !important;
+}
+
+:deep(.el-menu-item.is-active),
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu.is-opened > .el-sub-menu__title),
+:deep(.el-sub-menu__title:hover) {
+  background-color: #d6a77a !important;
+  color: #3e2f1c !important;
+}
+
+:deep(.el-menu-item.is-active) > .el-icon,
+:deep(.el-menu-item:hover) > .el-icon,
+:deep(.el-sub-menu__title:hover) > .el-icon {
+  color: #3e2f1c !important;
+}
+
 .menu-container::-webkit-scrollbar {
   width: 6px;
 }
-
 .menu-container::-webkit-scrollbar-track {
   background: #4a4a4a;
 }
-
 .menu-container::-webkit-scrollbar-thumb {
   background: #7a705c;
   border-radius: 3px;
 }
-
 .menu-container::-webkit-scrollbar-thumb:hover {
   background: #a88c6f;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-}
-
-#app {
-  height: 100%;
-}
-
-:deep(.el-menu-item) {
-  height: 50px;
-  line-height: 50px;
-}
-
-:deep(.el-sub-menu .el-sub-menu__title) {
-  height: 50px;
-  line-height: 50px;
 }
 </style>

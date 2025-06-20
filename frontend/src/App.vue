@@ -1,26 +1,18 @@
 <template>
-  <router-view />
+  <router-view v-slot="{ Component }">
+    <transition name="fade" mode="out-in">
+      <component :is="Component" />
+    </transition>
+  </router-view>
 </template>
 
-<script setup></script>
-
 <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.4s ease;
 }
-
-body,
-html,
-#app {
-  height: 100%;
-  font-family: "Helvetica Neue", Arial, sans-serif;
-  background-color: #f0f2f5;
-}
-
-#app {
-  display: flex;
-  flex-direction: column;
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
