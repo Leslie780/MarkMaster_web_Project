@@ -122,18 +122,31 @@ switch ($path) {
         }
         break;
 
-    case '/cgpa':
+    case '/gpa':
         if ($method === 'GET') {
-            require_once __DIR__ . '/../src/cgpa.php';
+            require_once __DIR__ . '/../src/gpa.php';
         } else {
             http_response_code(405);
             echo json_encode(['success' => false, 'message' => 'Method not allowed']);
         }
         break;
-
-
-    default:
-        http_response_code(404);
-        echo json_encode(['success' => false, 'message' => 'Route not found']);
+        case '/cgpa':
+                if ($method === 'GET') {
+                    require_once __DIR__ . '/../src/cgpa.php';
+                } else {
+                    http_response_code(405);
+                    echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+                }
+                break;
+        case '/compare':
+        if ($method === 'GET') {
+            require_once __DIR__ . '/../src/compare_course_scores.php';
+        } else {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        }
         break;
+        default:
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Route not found']);
 }
