@@ -7,21 +7,11 @@
 
       <el-form
         :model="form"
-        ref="loginForm"
+        ref="loginFormRef"
         label-width="120px"
         @submit.prevent="onSubmit"
       >
-        <el-form-item
-          label="Role"
-          prop="role"
-          :rules="[
-            {
-              required: true,
-              message: 'Please select your role',
-              trigger: 'change',
-            },
-          ]"
-        >
+        <el-form-item label="Role" prop="role">
           <el-select v-model="form.role" placeholder="Select Role">
             <el-option label="Student" value="student" />
             <el-option label="Lecturer" value="lecturer" />
@@ -30,55 +20,15 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item
-          v-if="form.role === 'student'"
-          label="Matric No."
-          prop="matricNo"
-          :rules="[
-            {
-              required: true,
-              message: 'Please input your Matric No.',
-              trigger: 'blur',
-            },
-          ]"
-        >
+        <el-form-item label="Identifier" prop="identifier">
           <el-input
-            v-model="form.matricNo"
-            placeholder="Enter your Matric No."
+            v-model="form.identifier"
+            placeholder="Enter Email / Matric No. / Staff No."
             autocomplete="off"
           />
         </el-form-item>
 
-        <el-form-item
-          v-if="['lecturer', 'admin', 'academicAdvisor'].includes(form.role)"
-          label="Staff No."
-          prop="staffNo"
-          :rules="[
-            {
-              required: true,
-              message: 'Please input your Staff No.',
-              trigger: 'blur',
-            },
-          ]"
-        >
-          <el-input
-            v-model="form.staffNo"
-            placeholder="Enter your Staff No."
-            autocomplete="off"
-          />
-        </el-form-item>
-
-        <el-form-item
-          label="Password"
-          prop="password"
-          :rules="[
-            {
-              required: true,
-              message: 'Please input your password',
-              trigger: 'blur',
-            },
-          ]"
-        >
+        <el-form-item label="Password" prop="password">
           <el-input
             v-model="form.password"
             type="password"
@@ -90,20 +40,22 @@
         <el-form-item>
           <el-button
             type="primary"
-            native-type="submit"
             :loading="loading"
-            block
-            >Login</el-button
+            @click="handleLogin"
+            style="width: 100%"
           >
+            Login
+          </el-button>
         </el-form-item>
 
         <div style="text-align: right; margin-bottom: 1rem">
-          <el-button type="text" @click="goRegister"
-            >Don't have an account? Register</el-button
-          >
-          <el-button type="text" @click="goForgetPassword"
-            >Forgot Password?</el-button
-          >
+          <el-button type="text" @click="goRegister">
+            Don't have an account? Register
+          </el-button>
+          <br />
+          <el-button type="text" @click="goForgetPassword">
+            Forgot Password?
+          </el-button>
         </div>
       </el-form>
     </el-card>
@@ -111,62 +63,97 @@
 </template>
 
 <script setup>
-import { reactive, ref, watch } from "vue";
+import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
+import { ElMessage } from 'element-plus';
 
 const router = useRouter();
 const loading = ref(false);
+const loginFormRef = ref(null);
 
 const form = reactive({
   role: "",
-  matricNo: "",
-  staffNo: "",
+  identifier: "",
   password: "",
 });
 
-watch(
-  () => form.role,
-  (newRole) => {
-    if (newRole !== "student") form.matricNo = "";
-    if (!["lecturer", "admin", "academicAdvisor"].includes(newRole))
-      form.staffNo = "";
+// Simple validation function
+function validateForm() {
+  if (!form.role) {
+    ElMessage.error('Please select your role');
+    return false;
   }
-);
+  
+  if (!form.identifier) {
+    ElMessage.error('Please enter your identifier');
+    return false;
+  }
+  
+  if (!form.password) {
+    ElMessage.error('Please enter your password');
+    return false;
+  }
+  
+  return true;
+}
 
-async function onSubmit() {
-  let identifier = "";
-  if (form.role === "student") identifier = form.matricNo;
-  else if (["lecturer", "admin", "academicAdvisor"].includes(form.role))
-    identifier = form.staffNo;
-
-  if (!identifier || !form.password) {
-    alert("Please fill in all required fields.");
+async function handleLogin() {
+  // Simple validation
+  if (!validateForm()) {
     return;
   }
 
   loading.value = true;
+  
   try {
-    const response = await fetch("http://localhost:8085/login", {
+    console.log('Attempting login with:', {
+      identifier: form.identifier,
+      role: form.role
+    });
+
+    const response = await fetch("http://localhost:8085/login.php", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
       body: JSON.stringify({
-        identifier,
+        identifier: form.identifier.trim(),
         password: form.password,
+        role: form.role
       }),
     });
 
-    const data = await response.json();
-    if (data.success) {
-      localStorage.setItem("user", JSON.stringify(data.user));
-      router.push("/");
-    } else {
-      alert(data.message || "Login failed");
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+
+    const data = await response.json();
+    console.log('Response data:', data);
+
+    if (data.success) {
+      // Store user data
+      localStorage.setItem("user", JSON.stringify(data.user));
+      ElMessage.success('Login successful!');
+      
+      // Navigate to dashboard
+      router.push("/dashboard");
+    } else {
+      ElMessage.error(data.message || "Login failed");
+    }
+    
   } catch (error) {
-    alert("Error: " + error.message);
+    console.error('Login error:', error);
+    ElMessage.error("Login failed: " + error.message);
   } finally {
     loading.value = false;
   }
+}
+
+function onSubmit() {
+  handleLogin();
 }
 
 function goRegister() {
@@ -211,108 +198,18 @@ function goForgetPassword() {
   letter-spacing: 1px;
 }
 
-.el-form-item__label {
-  color: #7e7e7e;
-  font-weight: 600;
-  font-size: 14px;
+.el-form-item {
+  margin-bottom: 20px;
 }
 
-.el-input__inner {
-  border-radius: 10px;
-  border-color: #d6d0c6;
-  background-color: #fcf9f5;
-  font-size: 14px;
-  color: #3a3a3a;
-  transition: border-color 0.3s ease;
-}
-
-.el-input__inner:focus,
-.el-input__inner:hover {
-  border-color: #d6a77a;
-}
-
-.el-button--primary {
-  background-color: #e7eaf0;
-  color: #3a3a3a;
-  font-weight: 600;
-  border-radius: 10px;
-  border: none;
-  transition: background-color 0.3s ease;
-  box-shadow: none;
-}
-
-.el-button--primary:hover {
-  background-color: #cfd8e3;
-  color: #1a2533;
-  box-shadow: none;
-}
-
-.register-link {
-  font-size: 15px;
-  color: #7e7e7e;
-  display: flex;
-  align-items: center;
-  user-select: none;
-}
-
-.register-link span {
-  margin-right: 6px;
-}
-
-.register-link .el-button--text {
+.el-button--text {
   color: #7e7e7e;
   font-weight: 500;
 }
 
-.register-link .el-button--text:hover {
+.el-button--text:hover {
   color: #d6a77a;
   background-color: transparent;
   text-decoration: underline;
-}
-
-.links-block {
-  margin-top: 1rem;
-  user-select: none;
-}
-
-.forgot-link {
-  display: inline-block;
-  margin-top: 6px;
-  margin-left: 26px; /* 左缩进，和 Register 按钮左对齐 */
-  color: #7e7e7e;
-  font-weight: 500;
-  padding: 0;
-}
-
-.forgot-link:hover {
-  color: #d6a77a;
-  background-color: transparent;
-  text-decoration: underline;
-}
-
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f9f6f1;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: #c1b7a6;
-  border-radius: 10px;
-  border: 2px solid #f9f6f1;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: #a58e70;
-}
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #c1b7a6 #f9f6f1;
 }
 </style>

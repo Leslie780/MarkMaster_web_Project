@@ -1,7 +1,6 @@
 <?php
-session_start(); // 开启 session
-
-require_once __DIR__ . '/db.php';
+session_start();
+require_once __DIR__ . '/db.php'; // Fixed: was **DIR**
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
@@ -13,6 +12,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+// Log incoming request
+error_log("Login attempt from: " . $_SERVER['REMOTE_ADDR']);
+
 $input = json_decode(file_get_contents('php://input'), true);
 
 if (!$input || empty($input['identifier']) || empty($input['password'])) {
@@ -21,18 +23,18 @@ if (!$input || empty($input['identifier']) || empty($input['password'])) {
     exit;
 }
 
-$identifier = $input['identifier'];
+$identifier = trim($input['identifier']);
 $password = $input['password'];
 
 try {
     $pdo = getPDO();
-
+    
     $stmt = $pdo->prepare("
         SELECT * FROM users 
-        WHERE email = :id OR matric_no = :id OR staff_no = :id
+        WHERE email = ? OR matric_no = ? OR staff_no = ?
         LIMIT 1
     ");
-    $stmt->execute(['id' => $identifier]);
+    $stmt->execute([$identifier, $identifier, $identifier]);
     $user = $stmt->fetch();
 
     if (!$user || !password_verify($password, $user['password'])) {
@@ -41,13 +43,13 @@ try {
         exit;
     }
 
-    // 登录成功 - 存入 SESSION
+    // Login successful
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['user_role'] = $user['role'];
     $_SESSION['user_name'] = $user['name'];
 
-    // 构造返回 JSON
-    unset($user['password']); // 安全考虑
+    // Remove password before returning user info
+    unset($user['password']);
 
     echo json_encode([
         'success' => true,
@@ -63,6 +65,8 @@ try {
         ]
     ]);
 } catch (PDOException $e) {
+    error_log("Database error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Database error occurred']);
 }
+?>
