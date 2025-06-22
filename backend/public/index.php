@@ -119,15 +119,6 @@ switch ($path) {
         }
         break;
 
-    case '/gpa':
-        if ($method === 'GET') {
-            require_once __DIR__ . '/../src/gpa.php';
-        } else {
-            http_response_code(405);
-            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
-        }
-        break;
-
     case '/cgpa':
         if ($method === 'GET') {
             require_once __DIR__ . '/../src/cgpa.php';
