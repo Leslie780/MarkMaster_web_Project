@@ -1,10 +1,13 @@
 import { createRouter, createWebHistory } from "vue-router";
+
 // Layout
 import AppLayout from "@/layouts/AppLayout.vue";
+
 // Public views
 import LoginView from "@/views/LoginView.vue";
 import RegisterView from "@/views/RegisterView.vue";
 import ForgetPasswordView from "@/views/ForgetPasswordView.vue";
+
 // Main views
 import DashboardView from "@/views/DashboardView.vue";
 import CoursesView from "@/views/CoursesView.vue";
@@ -15,6 +18,7 @@ import CAComponentsView from "@/views/CAComponentsView.vue";
 import FinalExamView from "@/views/FinalExamView.vue";
 import AddCourseView from "@/views/AddCourseView.vue";
 import AdvisorWorkspaceView from "@/views/AdvisorWorkspaceView.vue";
+
 // Admin views
 import UserManagementView from "@/views/admin/UserManagementView.vue";
 import ResetPasswordView from "@/views/admin/ResetPasswordsView.vue";
@@ -62,6 +66,13 @@ const routes = [
         component: AddCourseView,
       },
       {
+        path: '/courses/edit/:id',
+        name: 'EditCourse',
+        component: () => import('@/views/AddCourseView.vue'), // 重用 AddCourseView.vue
+        props: true
+      },
+
+      {
         path: "course_management",
         name: "CourseManagement",
         component: CourseManagementView,
@@ -86,6 +97,7 @@ const routes = [
         name: "FinalExam",
         component: FinalExamView,
       },
+
       // Admin routes
       {
         path: "admin/user-management",
@@ -106,48 +118,54 @@ const router = createRouter({
   routes,
 });
 
-// Safe function to get user from localStorage
-function getStoredUser() {
-  try {
-    const userStr = localStorage.getItem("user");
-    if (!userStr) return null;
-    
-    const user = JSON.parse(userStr);
-    // Validate that user object has required properties
-    if (user && typeof user === 'object' && user.id) {
-      return user;
-    }
-    return null;
-  } catch (error) {
-    console.warn('Invalid user data in localStorage, clearing...', error);
-    localStorage.removeItem("user");
-    return null;
-  }
-}
-
-// Router guard with safe localStorage handling
+//  router guider ，based on token authentication
 router.beforeEach((to, from, next) => {
-  try {
-    const user = getStoredUser();
-    const isAuthRequired = to.meta && to.meta.requiresAuth;
-    const isPublicRoute = ['/login', '/register', '/forget-password'].includes(to.path);
-    
-    if (isAuthRequired && !user) {
-      // Redirect to login if authentication required but no user
-      next("/login");
-    } else if (isPublicRoute && user) {
-      // Redirect to dashboard if user is logged in and trying to access public routes
-      next("/dashboard");
-    } else {
-      // Allow navigation
-      next();
-    }
-  } catch (error) {
-    console.error('Router guard error:', error);
-    // On any error, clear localStorage and redirect to login
-    localStorage.removeItem("user");
-    next("/login");
+  const userData = localStorage.getItem("user");
+  const user = userData ? JSON.parse(userData) : null;
+  const role = user?.role;
+
+  const adminRoutes = ["/admin/user-management", "/admin/reset-password"];
+
+  const lecturerRoutes = [
+    "/marks",
+    "/ca-components",
+    "/final-exam",
+    "course_management",
+  ];
+
+  const advisorRoutes = ["/advisorworkspace"];
+
+  // 1. 未登录访问受保护页面 → 拦截
+  if (to.path !== "/login" && to.path !== "/register" && !user) {
+    return next("/login");
   }
+
+  // 2. 已登录用户访问 login/register → 跳转 dashboard
+  if ((to.path === "/login" || to.path === "/register") && user) {
+    return next("/dashboard");
+  }
+
+  // 3. 角色访问控制（集中逻辑）
+  if (adminRoutes.includes(to.path) && role !== "admin") {
+    return next("/dashboard");
+  }
+
+  if (
+    lecturerRoutes.includes(to.path) &&
+    !["lecturer", "admin"].includes(role)
+  ) {
+    return next("/dashboard");
+  }
+
+  if (
+    advisorRoutes.includes(to.path) &&
+    !["academic advisor", "admin"].includes(role)
+  ) {
+    return next("/dashboard");
+  }
+
+  // 4. 允许通行
+  next();
 });
 
 export default router;

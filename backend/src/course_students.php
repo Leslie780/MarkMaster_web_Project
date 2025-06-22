@@ -67,27 +67,32 @@ switch ($method) {
         break;
 
     case 'GET':
-        if (!isset($_GET['course_id'])) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Missing course_id']);
-            exit;
-        }
+    if (!isset($_GET['course_id'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Missing course_id']);
+        exit;
+    }
 
-        $courseId = $_GET['course_id'];
+    $courseId = $_GET['course_id'];
 
-        // 获取课程学生列表
-        $stmt = $pdo->prepare("
-            SELECT u.id AS student_id, u.name, u.email, u.matric_no, cs.created_at
-            FROM course_students cs
-            JOIN users u ON cs.student_id = u.id
-            WHERE cs.course_id = ?
-        ");
-        $stmt->execute([$courseId]);
-        $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // 获取课程学生列表，包含头像字段
+    $stmt = $pdo->prepare("
+        SELECT 
+            u.id AS student_id,
+            u.name,
+            u.email,
+            u.matric_no,
+            u.profile_pic,
+            cs.created_at
+        FROM course_students cs
+        JOIN users u ON cs.student_id = u.id
+        WHERE cs.course_id = ?
+    ");
+    $stmt->execute([$courseId]);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['success' => true, 'data' => $students]);
-        break;
-
+    echo json_encode(['success' => true, 'data' => $students]);
+    break;
     default:
         http_response_code(405);
         echo json_encode(['success' => false, 'message' => 'Method not allowed']);

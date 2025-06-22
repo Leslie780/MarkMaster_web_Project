@@ -206,8 +206,6 @@ const form = ref({
   semester: "",
   credit_hours: null,
   description: "",
-  final_exam_percentage: 0,
-  continuous_assessment_percentage: 0,
   status: "active",
 });
 
@@ -243,31 +241,6 @@ const rules = {
       required: true,
       message: "Please select credit hours",
       trigger: "change",
-    },
-  ],
-  final_exam_percentage: [
-    {
-      validator: (_rule, value, callback) => {
-        if (value < 30) {
-          callback(new Error("Final Exam must be at least 30%"));
-        } else {
-          callback();
-        }
-      },
-      trigger: "blur",
-    },
-  ],
-  continuous_assessment_percentage: [
-    {
-      validator: (_rule, value, callback) => {
-        const total = value + form.value.final_exam_percentage;
-        if (total !== 100) {
-          callback(new Error("Final + Continuous must equal 100%"));
-        } else {
-          callback();
-        }
-      },
-      trigger: "blur",
     },
   ],
 };

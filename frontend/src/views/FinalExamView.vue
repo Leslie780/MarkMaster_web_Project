@@ -194,9 +194,11 @@
                     :min="0"
                     :max="100"
                     :step="1"
-                    :precision="1"
+                    :precision="2"
+                    :step-strictly="true"
                     size="default"
                     style="width: 120px"
+                    @change="validateScore(row.student_id)"
                   />
                   <span style="color: #7f8c8d; font-weight: 500">/ 100</span>
                 </div>
@@ -290,6 +292,15 @@ const completedScores = computed(() => {
       score.mark_obtained !== ""
   ).length;
 });
+
+function validateScore(studentId) {
+  const score = finalScores.value[studentId].mark_obtained;
+
+  if (score < 0 || score > 100) {
+    ElMessage.warning("Score must be between 0 and 100");
+    finalScores.value[studentId].mark_obtained = null; // 清空
+  }
+}
 
 // 获取教师课程
 async function fetchCourses() {

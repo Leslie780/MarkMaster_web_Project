@@ -3,8 +3,6 @@
     <!-- Header -->
     <div class="app-header">
       <div class="header-left">🎓 MarkMastert</div>
-
-      <!-- 用户信息下拉（右上角） -->
       <div class="header-right">
         <el-dropdown trigger="click">
           <span class="user-info">
@@ -13,12 +11,12 @@
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item @click="goToResetPassword"
-                >Change Password</el-dropdown-item
-              >
-              <el-dropdown-item divided @click="switchAccount"
-                >Switch Account</el-dropdown-item
-              >
+              <el-dropdown-item @click="goToResetPassword">
+                Change Password
+              </el-dropdown-item>
+              <el-dropdown-item divided @click="switchAccount">
+                Switch Account
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -43,52 +41,65 @@
               <el-icon><HomeFilled /></el-icon>
               <span>Dashboard</span>
             </el-menu-item>
+
             <el-menu-item index="courses">
               <el-icon><Document /></el-icon>
               <span>Courses List</span>
             </el-menu-item>
-            <el-menu-item index="course_management">
+
+            <el-menu-item
+              v-if="hasRole(['lecturer'])"
+              index="course_management"
+            >
               <el-icon><UserFilled /></el-icon>
-              <span>Course Management</span>
+              <span>Course Enrollment</span>
             </el-menu-item>
-            <el-menu-item index="students">
+
+            <el-menu-item v-if="hasRole(['student'])" index="students">
               <el-icon><UserFilled /></el-icon>
               <span>Students</span>
             </el-menu-item>
-            <el-menu-item index="marks">
+
+            <el-menu-item v-if="hasRole(['lecturer'])" index="marks">
               <el-icon><PieChart /></el-icon>
               <span>Marks</span>
             </el-menu-item>
-            <el-menu-item index="advisorworkspace">
+
+            <el-menu-item
+              v-if="hasRole(['academic advisor'])"
+              index="advisorworkspace"
+            >
               <el-icon><User /></el-icon>
               <span>Advisor Workspace</span>
             </el-menu-item>
-            <el-sub-menu index="assessments">
+
+            <el-sub-menu v-if="hasRole(['lecturer'])" index="assessments">
               <template #title>
                 <el-icon><Edit /></el-icon>
                 <span>Assessments</span>
               </template>
-              <el-menu-item index="ca-components"
-                >Continuous Assessment</el-menu-item
-              >
+              <el-menu-item index="ca-components">
+                Continuous Assessment
+              </el-menu-item>
               <el-menu-item index="final-exam">Final Exam</el-menu-item>
             </el-sub-menu>
-            <el-sub-menu index="admin">
+
+            <el-sub-menu v-if="hasRole(['admin'])" index="admin">
               <template #title>
                 <el-icon><Setting /></el-icon>
                 <span>Admin Panel</span>
               </template>
-              <el-menu-item index="admin/user-management"
-                >Manage Users</el-menu-item
-              >
-              <el-menu-item index="admin/reset-password"
-                >Reset Password</el-menu-item
-              >
+              <el-menu-item index="admin/user-management">
+                Manage Users
+              </el-menu-item>
+              <el-menu-item index="admin/reset-password">
+                Reset Password
+              </el-menu-item>
             </el-sub-menu>
           </el-menu>
         </div>
 
-        <!-- Logout at bottom -->
+        <!-- Logout -->
         <div class="logout-container">
           <el-menu
             background-color="#001529"
@@ -140,14 +151,17 @@ import { ElMessageBox } from "element-plus";
 
 const router = useRouter();
 const route = useRoute();
-const activeMenu = ref("dashboard");
+
 const username = ref("User");
+const role = ref("");
+const activeMenu = ref("dashboard");
 
 onMounted(() => {
   const user = JSON.parse(localStorage.getItem("user"));
   if (user) {
     username.value =
       user.name || user.email || user.staff_no || user.matric_no || "User";
+    role.value = user.role;
   }
 });
 
@@ -159,6 +173,10 @@ watch(
     activeMenu.value = path;
   }
 );
+
+function hasRole(allowedRoles) {
+  return allowedRoles.includes(role.value);
+}
 
 async function handleMenuSelect(index) {
   if (index === "logout") {
@@ -172,12 +190,11 @@ async function handleMenuSelect(index) {
           type: "warning",
         }
       );
-
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       router.replace("/login");
     } catch {
-      // cancel
+      // canceled
     }
   } else {
     router.push("/" + index).catch((err) => {

@@ -41,7 +41,7 @@ switch ($path) {
 
     case '/forgot-password':
         if ($method === 'POST') {
-            require_once __DIR__ . '/../src/forgot_password.php';
+            require_once __DIR__ . '/../src/forgetpassword.php';
         } else {
             http_response_code(405);
             echo json_encode(['success' => false, 'message' => 'Method not allowed']);
@@ -74,10 +74,7 @@ switch ($path) {
             echo json_encode(['success' => false, 'message' => 'Method not allowed']);
         }
         break;
-
     case '/assessment-components':
-    case '/assessment-scores':
-    case '/final-exam-scores':
         if (in_array($method, ['GET', 'POST', 'PUT', 'DELETE'])) {
             require_once __DIR__ . '/../src/assessment.php';
         } else {
@@ -86,14 +83,32 @@ switch ($path) {
         }
         break;
 
-    case '/results':
-        if ($method === 'GET') {
-            require_once __DIR__ . '/../src/result.php';
+    case '/assessment-scores':
+        if (in_array($method, ['GET', 'POST', 'PUT', 'DELETE'])) {
+            require_once __DIR__ . '/../src/assessment.php';
         } else {
             http_response_code(405);
             echo json_encode(['success' => false, 'message' => 'Method not allowed']);
         }
         break;
+    case '/final-exam-scores':
+        if (in_array($method, ['GET', 'POST', 'PUT', 'DELETE'])) {
+            require_once __DIR__ . '/../src/assessment.php';
+        } else {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        }
+        break;
+    //处理一个lecturer下面多门课程多名学生的最终成绩
+    case '/results':
+    if ($method === 'GET') {
+        require_once __DIR__ . '/../src/result.php';
+    } else {
+        http_response_code(405);
+        echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        
+    }
+    break;
 
     case '/lecturer-results':
         if ($method === 'GET') {

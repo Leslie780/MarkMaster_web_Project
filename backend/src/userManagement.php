@@ -79,7 +79,14 @@ case 'POST':
                 echo json_encode(['success' => false, 'message' => 'Staff number already exists']);
                 exit;
             }
-        }
+        }if ($matricNo !== null) {
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE matric_no = ?");
+    $stmt->execute([$matricNo]);
+    if ($stmt->fetch()) {
+        echo json_encode(['success' => false, 'message' => 'Matric number already exists']);
+        exit;
+    }
+}
 
         $sql = "INSERT INTO users (email, password, role, name, matric_no, staff_no, phone, status, profile_pic) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";

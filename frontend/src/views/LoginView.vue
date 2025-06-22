@@ -45,7 +45,7 @@
             :disabled="isSubmitting"
             class="login-button"
           >
-            {{ isSubmitting ? 'Logging in...' : 'Login' }}
+            {{ isSubmitting ? "Logging in..." : "Login" }}
           </button>
         </div>
 
@@ -53,7 +53,11 @@
           <button type="button" @click="navigateToRegister" class="link-button">
             Don't have an account? Register
           </button>
-          <button type="button" @click="navigateToForgotPassword" class="link-button">
+          <button
+            type="button"
+            @click="navigateToForgotPassword"
+            class="link-button"
+          >
             Forgot Password?
           </button>
         </div>
@@ -69,42 +73,42 @@
 
 <script>
 export default {
-  name: 'LoginView',
+  name: "LoginView",
   data() {
     return {
       isSubmitting: false,
-      statusMessage: '',
-      statusType: '',
+      statusMessage: "",
+      statusType: "",
       loginData: {
-        role: '',
-        identifier: '',
-        password: ''
-      }
-    }
+        role: "",
+        identifier: "",
+        password: "",
+      },
+    };
   },
   methods: {
-    showMessage(message, type = 'info') {
+    showMessage(message, type = "info") {
       this.statusMessage = message;
       this.statusType = type;
       setTimeout(() => {
-        this.statusMessage = '';
-        this.statusType = '';
+        this.statusMessage = "";
+        this.statusType = "";
       }, 5000);
     },
 
     validateInput() {
       if (!this.loginData.role) {
-        this.showMessage('Please select your role', 'error');
+        this.showMessage("Please select your role", "error");
         return false;
       }
-      
+
       if (!this.loginData.identifier) {
-        this.showMessage('Please enter your identifier', 'error');
+        this.showMessage("Please enter your identifier", "error");
         return false;
       }
-      
+
       if (!this.loginData.password) {
-        this.showMessage('Please enter your password', 'error');
+        this.showMessage("Please enter your password", "error");
         return false;
       }
 
@@ -112,102 +116,90 @@ export default {
     },
 
     async performLogin() {
-      if (!this.validateInput()) {
-        return;
-      }
+      if (!this.validateInput()) return;
 
       this.isSubmitting = true;
-      this.showMessage('Logging in...', 'info');
-      
-      try {
-        console.log('Login attempt:', {
-          identifier: this.loginData.identifier,
-          role: this.loginData.role
-        });
+      this.showMessage("Logging in...", "info");
 
+      try {
         const requestData = {
           identifier: this.loginData.identifier.trim(),
           password: this.loginData.password,
-          role: this.loginData.role
+          role: this.loginData.role,
         };
 
-        const response = await fetch('http://localhost:8085/login.php', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+        const response = await fetch("http://localhost:8085/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
           },
-          body: JSON.stringify(requestData)
+          body: JSON.stringify(requestData),
         });
 
-        console.log('Response status:', response.status);
-        
-        if (response.status !== 200) {
-          throw new Error('Server responded with status: ' + response.status);
-        }
-
         const responseData = await response.json();
-        console.log('Login response:', responseData);
+        console.log("Login response:", response.status, responseData);
 
-        if (responseData.success) {
+        if (response.ok && responseData.success) {
           this.handleLoginSuccess(responseData.user);
         } else {
-          this.showMessage(responseData.message || 'Login failed', 'error');
+          // Show backend-provided message or fallback
+          this.showMessage(responseData.message || "Login failed", "error");
         }
-        
       } catch (error) {
-        console.error('Login error:', error);
-        this.showMessage('Login failed: ' + error.message, 'error');
+        console.error("Login error:", error);
+        this.showMessage(
+          "Network or server error. Please try again later.",
+          "error"
+        );
       } finally {
         this.isSubmitting = false;
       }
     },
-
     handleLoginSuccess(userData) {
       try {
         // Store user data safely
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        this.showMessage('Login successful! Redirecting...', 'success');
-        
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        this.showMessage("Login successful! Redirecting...", "success");
+
         // Navigate after a short delay
         setTimeout(() => {
           this.navigateBasedOnRole(userData.role);
         }, 1000);
-        
       } catch (error) {
-        console.error('Error handling login success:', error);
-        this.showMessage('Login successful but navigation failed', 'error');
+        console.error("Error handling login success:", error);
+        this.showMessage("Login successful but navigation failed", "error");
       }
     },
 
     navigateBasedOnRole(userRole) {
       try {
-        if (userRole === 'admin') {
-          this.$router.push('/admin/user-management');
-        } else if (userRole === 'lecturer') {
-          this.$router.push('/courses');
-        } else if (userRole === 'academicAdvisor') {
-          this.$router.push('/advisorworkspace');
+        if (userRole === "admin") {
+          this.$router.push("/admin/user-management");
+        } else if (userRole === "lecturer") {
+          this.$router.push("/courses");
+        } else if (userRole === "academicAdvisor") {
+          this.$router.push("/advisorworkspace");
         } else {
-          this.$router.push('/dashboard');
+          this.$router.push("/dashboard");
         }
       } catch (error) {
-        console.error('Navigation error:', error);
+        console.error("Navigation error:", error);
         // Fallback to window.location
-        window.location.href = '/dashboard';
+        window.location.href = "/dashboard";
       }
     },
 
     navigateToRegister() {
-      this.$router.push('/register');
+      this.$router.push("/register");
     },
 
     navigateToForgotPassword() {
-      this.$router.push('/forget-password');
-    }
-  }
-}
+      this.$router.push("/forget-password");
+    },
+  },
+};
 </script>
 
 <style scoped>

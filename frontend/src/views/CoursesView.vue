@@ -198,18 +198,31 @@
               </template>
             </el-table-column>
 
-            <el-table-column label="Actions" width="120" align="center">
+            <el-table-column label="Actions" width="180" align="center">
               <template #default="{ row }">
-                <el-button
-                  size="small"
-                  type="danger"
-                  class="delete-btn"
-                  @click="deleteCourse(row.id)"
+                <div
+                  class="action-buttons"
                   v-if="user.role === 'admin' || user.role === 'lecturer'"
                 >
-                  <i class="el-icon-delete"></i>
-                  Delete
-                </el-button>
+                  <el-button
+                    size="small"
+                    type="primary"
+                    class="edit-btn"
+                    @click="editCourse(row.id)"
+                  >
+                    <i class="el-icon-edit"></i>
+                    Edit
+                  </el-button>
+                  <el-button
+                    size="small"
+                    type="danger"
+                    class="delete-btn"
+                    @click="deleteCourse(row.id)"
+                  >
+                    <i class="el-icon-delete"></i>
+                    Delete
+                  </el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -318,14 +331,24 @@
                 class="card-footer"
                 v-if="user.role === 'admin' || user.role === 'lecturer'"
               >
-                <el-button
-                  type="danger"
-                  class="delete-card-btn"
-                  @click="deleteCourse(course.id)"
-                >
-                  <i class="el-icon-delete"></i>
-                  Delete Course
-                </el-button>
+                <div class="card-action-buttons">
+                  <el-button
+                    type="primary"
+                    class="edit-card-btn"
+                    @click="editCourse(course.id)"
+                  >
+                    <i class="el-icon-edit"></i>
+                    Edit Course
+                  </el-button>
+                  <el-button
+                    type="danger"
+                    class="delete-card-btn"
+                    @click="deleteCourse(course.id)"
+                  >
+                    <i class="el-icon-delete"></i>
+                    Delete Course
+                  </el-button>
+                </div>
               </div>
             </div>
           </div>
@@ -403,6 +426,9 @@ const fetchLecturers = async () => {
     lecturers.value = [];
   }
 };
+function editCourse(courseId) {
+  router.push({ name: "EditCourse", params: { id: courseId } });
+}
 
 onMounted(() => {
   requestAnimationFrame(() => {
@@ -753,6 +779,12 @@ async function deleteCourse(id) {
   border-radius: 16px;
   font-weight: 500;
 }
+.edit-btn {
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
 .delete-btn {
   border-radius: 8px;
@@ -924,8 +956,14 @@ async function deleteCourse(id) {
   background: #fafbfc;
 }
 
+.card-action-buttons {
+  display: flex;
+  gap: 12px; /* 按钮之间的间隔 */
+}
+
+.edit-card-btn,
 .delete-card-btn {
-  width: 100%;
+  flex: 1; /* 自动平均宽度 */
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -996,5 +1034,11 @@ async function deleteCourse(id) {
     width: 100%;
     justify-content: center;
   }
+}
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
 }
 </style>

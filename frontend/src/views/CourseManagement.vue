@@ -8,9 +8,6 @@
             <i class="el-icon-user-solid title-icon"></i>
             Course Enrollment Management
           </h1>
-          <p class="page-subtitle">
-            Manage student enrollments across your courses
-          </p>
         </div>
         <div class="header-stats" v-if="selectedCourseId">
           <div class="stat-card">
@@ -81,6 +78,12 @@
                   :value="student.id"
                 >
                   <div class="student-option">
+                    <img
+                      :src="student.profile_pic || defaultAvatar"
+                      @error="(e) => (e.target.src = defaultAvatar)"
+                      class="student-avatar-option"
+                      alt="avatar"
+                    />
                     <div class="student-info">
                       <span class="student-name">{{ student.name }}</span>
                       <span class="student-details"
@@ -106,6 +109,7 @@
       </el-card>
 
       <!-- Students List -->
+      <!-- Students List -->
       <el-card class="students-list-card">
         <div class="card-header">
           <div class="section-title">
@@ -119,12 +123,16 @@
 
         <div v-if="enrolledStudents.length > 0" class="students-table">
           <el-table :data="enrolledStudents" stripe class="custom-table">
-            <el-table-column label="Student Name" prop="name" min-width="200">
+            <!-- Student Info Column -->
+            <el-table-column label="Student Name" prop="name" min-width="250">
               <template #default="{ row }">
                 <div class="student-cell">
-                  <div class="student-avatar">
-                    <i class="el-icon-user-solid"></i>
-                  </div>
+                  <img
+                    :src="row.profile_pic || defaultAvatar"
+                    @error="(e) => (e.target.src = defaultAvatar)"
+                    class="student-avatar"
+                    alt="avatar"
+                  />
                   <div class="student-details">
                     <div class="student-name">{{ row.name }}</div>
                     <div class="student-email">{{ row.email }}</div>
@@ -133,6 +141,7 @@
               </template>
             </el-table-column>
 
+            <!-- Matric Number -->
             <el-table-column
               label="Matric Number"
               prop="matric_no"
@@ -145,6 +154,7 @@
               </template>
             </el-table-column>
 
+            <!-- Remove Button -->
             <el-table-column label="Actions" width="120" align="center">
               <template #default="{ row }">
                 <el-button
@@ -161,6 +171,7 @@
           </el-table>
         </div>
 
+        <!-- No Student State -->
         <div v-else class="empty-state">
           <div class="empty-content">
             <i class="el-icon-user-solid empty-icon"></i>
@@ -172,7 +183,6 @@
         </div>
       </el-card>
     </div>
-
     <!-- Select Course Prompt -->
     <div v-else class="select-course-prompt">
       <div class="prompt-content">
@@ -200,6 +210,7 @@ const enrolledStudents = ref([]);
 const availableStudents = ref([]);
 const selectedStudentId = ref(null);
 const enrollLoading = ref(false);
+const defaultAvatar = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
 // 获取当前讲师的课程
 async function fetchCourses() {
@@ -702,5 +713,47 @@ onMounted(() => {
     width: 100%;
     justify-content: center;
   }
+}
+.student-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.student-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #dcdfe6;
+}
+
+.student-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.student-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.student-email {
+  font-size: 12px;
+  color: #999;
+}
+.student-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.student-avatar-option {
+  width: 32px;
+  height: 32px;
+  border-radius: 25%;
+  object-fit: cover;
+  border: 1px solid #dcdfe6;
 }
 </style>

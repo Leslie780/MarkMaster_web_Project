@@ -69,6 +69,8 @@ $password = $input['password'];
 
 try {
     $pdo = getPDO();
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
     
     $stmt = $pdo->prepare("
         SELECT * FROM users 
@@ -78,11 +80,27 @@ try {
     $stmt->execute([$identifier, $identifier, $identifier]);
     $user = $stmt->fetch();
 
-    if (!$user || !password_verify($password, $user['password'])) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Invalid credentials']);
+  
+    if (!$user) {
+        http_response_code(404);
+        echo json_encode([
+            'success' => false,
+            'message' => 'User not found. Please check your email, matric number, or staff number.'
+        ]);
         exit;
     }
+
+    // Step 2: 验证密码
+    if (!password_verify($password, $user['password'])) {
+        http_response_code(401);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Incorrect password. Please try again.'
+        ]);
+        exit;
+    }
+
+    
 
     // Login successful
     $_SESSION['user_id'] = $user['id'];
@@ -91,6 +109,7 @@ try {
 
     // Remove password before returning user info
     unset($user['password']);
+    unset($user['created_at']);
 
     echo json_encode([
         'success' => true,
@@ -104,7 +123,8 @@ try {
             'matric_no' => $user['matric_no'] ?? null,
             'staff_no' => $user['staff_no'] ?? null,
             'phone' => $user['phone'] ?? null,
-            'profile_pic' => $user['profile_pic'] ?? null
+            'profile_pic' => $user['profile_pic'] ?? null,
+            'status' => $user['status'] ?? 'unknown',
         ]
     ]);
 } catch (PDOException $e) {

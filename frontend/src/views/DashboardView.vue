@@ -1,230 +1,99 @@
 <template>
   <div class="dashboard-container">
     <el-card class="welcome-card">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">Dashboard</span>
-          <span class="card-time">{{ currentTime }}</span>
-        </div>
-      </template>
-
-      <div class="dashboard-content">
-        <h2 class="welcome-title">🎓 Welcome to MarkMaster</h2>
-
-        <el-row :gutter="20">
-          <el-col :span="6">
-            <el-card class="stat-card" shadow="hover">
-              <div class="stat-content">
-                <div class="stat-icon" style="background-color: #d6a77a">
-                  <el-icon size="24"><Document /></el-icon>
-                </div>
-                <div class="stat-info">
-                  <div class="stat-number">15</div>
-                  <div class="stat-label">Total Courses</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-
-          <el-col :span="6">
-            <el-card class="stat-card" shadow="hover">
-              <div class="stat-content">
-                <div class="stat-icon" style="background-color: #a8b0a2">
-                  <el-icon size="24"><User /></el-icon>
-                </div>
-                <div class="stat-info">
-                  <div class="stat-number">342</div>
-                  <div class="stat-label">Total Students</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-
-          <el-col :span="6">
-            <el-card class="stat-card" shadow="hover">
-              <div class="stat-content">
-                <div class="stat-icon" style="background-color: #bfa18f">
-                  <el-icon size="24"><UserFilled /></el-icon>
-                </div>
-                <div class="stat-info">
-                  <div class="stat-number">28</div>
-                  <div class="stat-label">Total Lecturers</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-
-          <el-col :span="6">
-            <el-card class="stat-card" shadow="hover">
-              <div class="stat-content">
-                <div class="stat-icon" style="background-color: #c6aa9a">
-                  <el-icon size="24"><PieChart /></el-icon>
-                </div>
-                <div class="stat-info">
-                  <div class="stat-number">12</div>
-                  <div class="stat-label">Pending Reviews</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-
-        <div class="status-alert">
-          <el-alert
-            title="System Status"
-            description="All systems are running normally. Last sync: 2 minutes ago."
-            type="success"
-            :closable="false"
-            show-icon
-          />
-        </div>
-      </div>
+      <h2 class="welcome-title">Welcome to the Course Marking System 🎓</h2>
+      <p class="welcome-description">
+        This system allows lecturers to manage course assessments, students to
+        view their grades, and advisors/admins to monitor student performance.
+      </p>
     </el-card>
+
+    <div class="dashboard-grid">
+      <el-card class="info-card">
+        <h3>📘 For Lecturers</h3>
+        <ul>
+          <li>📌 Manage courses & students</li>
+          <li>🧪 Add and evaluate assessments</li>
+          <li>📊 Track final exam results</li>
+        </ul>
+      </el-card>
+
+      <el-card class="info-card">
+        <h3>🎯 For Students</h3>
+        <ul>
+          <li>📄 View enrolled courses</li>
+          <li>📈 Check assessment scores</li>
+          <li>🏆 Compare with classmates</li>
+        </ul>
+      </el-card>
+
+      <el-card class="info-card">
+        <h3>🛡️ For Admin/Advisor</h3>
+        <ul>
+          <li>🔧 Reset passwords</li>
+          <li>👥 Manage users</li>
+          <li>📋 Review academic performance</li>
+        </ul>
+      </el-card>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
-import { Document, User, UserFilled, PieChart } from "@element-plus/icons-vue";
-
-const currentTime = ref("");
-
-const updateTime = () => {
-  currentTime.value = new Date().toLocaleString();
-};
-
-let timer;
-
-onMounted(() => {
-  updateTime();
-  timer = setInterval(updateTime, 1000);
-});
-
-onUnmounted(() => {
-  if (timer) {
-    clearInterval(timer);
-  }
-});
+// no logic needed for static display
 </script>
 
 <style scoped>
 .dashboard-container {
-  height: 100%;
-  padding: 0;
-  background-color: #f9f6f1;
-  overflow-y: auto;
+  padding: 32px;
+  background: #f9f9f9;
 }
 
 .welcome-card {
-  background-color: #fff9f2;
-  border: 1px solid #e5ded7;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-  border-radius: 12px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #4a4a4a;
-}
-
-.card-time {
-  font-size: 14px;
-  color: #888;
-}
-
-.dashboard-content {
-  padding: 20px 0;
-  color: #4a4a4a;
+  margin-bottom: 32px;
+  padding: 24px;
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  text-align: center;
+  border-radius: 16px;
 }
 
 .welcome-title {
-  color: #d6a77a;
-  margin-bottom: 16px;
-}
-
-.route-path {
-  color: #666;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  margin-bottom: 16px;
-  background-color: #fff9f2 !important;
-  border: 1px solid #e5ded7;
-  border-radius: 12px;
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  padding: 16px 0;
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 16px;
-  color: white;
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-number {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
-  color: #4a4a4a;
-  line-height: 1;
-  margin-bottom: 4px;
+  color: #2c3e50;
 }
 
-.stat-label {
-  font-size: 14px;
-  color: #7a7a7a;
+.welcome-description {
+  font-size: 16px;
+  color: #555;
+  margin-top: 12px;
 }
 
-.status-alert {
-  margin-top: 24px;
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
 }
 
-/* Alert override */
-:deep(.el-alert) {
-  background-color: #fff4e9;
-  border-color: #f0e5da;
-  color: #4a4a4a;
-  border-radius: 8px;
+.info-card {
+  padding: 20px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-/* Scrollbar warm gray style */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #f1ede7;
-}
-::-webkit-scrollbar-thumb {
-  background-color: #c1b6a4;
-  border-radius: 8px;
+.info-card h3 {
+  margin-bottom: 12px;
+  font-size: 18px;
+  color: #333;
 }
 
-/* Code block style */
-code {
-  background-color: #f1f1f1;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: "Courier New", monospace;
-  color: #4a4a4a;
+.info-card ul {
+  padding-left: 20px;
+  color: #666;
+}
+
+.info-card li {
+  margin-bottom: 6px;
 }
 </style>
