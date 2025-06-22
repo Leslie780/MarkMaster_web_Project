@@ -54,14 +54,15 @@ foreach ($courses as $course) {
     $semester_key = $course['academic_year'] . ' - ' . $course['semester'];
 
     // 获取 assessment scores
-    $stmt2 = $conn->prepare("
-        SELECT ac.id as component_id, ac.max_mark, ac.percentage, 
-               COALESCE(ascore.mark_obtained, 0) as mark_obtained
-        FROM assessment_components ac
-        LEFT JOIN assessment_scores ascore
-            ON ac.id = ascore.component_id AND ascore.student_id = ?
-        WHERE ac.course_id = ?
-    ");
+  $stmt2 = $conn->prepare("
+    SELECT ac.id as component_id, ac.title, ac.max_mark, ac.percentage, 
+           COALESCE(ascore.mark_obtained, 0) as mark_obtained
+    FROM assessment_components ac
+    LEFT JOIN assessment_scores ascore
+        ON ac.id = ascore.component_id AND ascore.student_id = ?
+    WHERE ac.course_id = ?
+");
+
     $stmt2->execute([$student_id, $course_id]);
     $assessments = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
