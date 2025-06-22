@@ -1,6 +1,5 @@
 <?php
 session_start();
-require_once __DIR__ . '/db.php'; // Fixed: was **DIR**
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
@@ -12,7 +11,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Log incoming request
+// Debug: Check current directory and file paths
+$currentDir = __DIR__;
+$parentDir = dirname(__DIR__);
+$dbPath1 = $parentDir . '/src/db.php';
+$dbPath2 = $currentDir . '/../src/db.php';
+
+// Try multiple path possibilities
+$possiblePaths = [
+    $parentDir . '/src/db.php',
+    $currentDir . '/../src/db.php',
+    $currentDir . '/../../backend/src/db.php',
+    '/Users/arnobrizwan/Documents/GitHub/MarkMaster_web_Project/backend/src/db.php'
+];
+
+$dbPath = null;
+foreach ($possiblePaths as $path) {
+    if (file_exists($path)) {
+        $dbPath = $path;
+        break;
+    }
+}
+
+if (!$dbPath) {
+    // If we can't find db.php, return debug info
+    echo json_encode([
+        'success' => false,
+        'message' => 'Cannot find db.php file',
+        'debug' => [
+            'current_dir' => $currentDir,
+            'parent_dir' => $parentDir,
+            'tried_paths' => $possiblePaths,
+            'files_in_current_dir' => scandir($currentDir),
+            'files_in_parent_dir' => is_dir($parentDir) ? scandir($parentDir) : 'Parent dir not found',
+            'files_in_src_dir' => is_dir($parentDir . '/src') ? scandir($parentDir . '/src') : 'Src dir not found'
+        ]
+    ], JSON_PRETTY_PRINT);
+    exit;
+}
+
+// Include the db.php file
+require_once $dbPath;
+
+// Log incoming request for debugging
 error_log("Login attempt from: " . $_SERVER['REMOTE_ADDR']);
 
 $input = json_decode(file_get_contents('php://input'), true);
@@ -61,7 +102,9 @@ try {
             'email' => $user['email'],
             'role' => $user['role'],
             'matric_no' => $user['matric_no'] ?? null,
-            'staff_no' => $user['staff_no'] ?? null
+            'staff_no' => $user['staff_no'] ?? null,
+            'phone' => $user['phone'] ?? null,
+            'profile_pic' => $user['profile_pic'] ?? null
         ]
     ]);
 } catch (PDOException $e) {

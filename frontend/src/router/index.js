@@ -1,13 +1,10 @@
 import { createRouter, createWebHistory } from "vue-router";
-
 // Layout
 import AppLayout from "@/layouts/AppLayout.vue";
-
 // Public views
 import LoginView from "@/views/LoginView.vue";
 import RegisterView from "@/views/RegisterView.vue";
 import ForgetPasswordView from "@/views/ForgetPasswordView.vue";
-
 // Main views
 import DashboardView from "@/views/DashboardView.vue";
 import CoursesView from "@/views/CoursesView.vue";
@@ -18,7 +15,6 @@ import CAComponentsView from "@/views/CAComponentsView.vue";
 import FinalExamView from "@/views/FinalExamView.vue";
 import AddCourseView from "@/views/AddCourseView.vue";
 import AdvisorWorkspaceView from "@/views/AdvisorWorkspaceView.vue";
-
 // Admin views
 import UserManagementView from "@/views/admin/UserManagementView.vue";
 import ResetPasswordView from "@/views/admin/ResetPasswordsView.vue";
@@ -90,7 +86,6 @@ const routes = [
         name: "FinalExam",
         component: FinalExamView,
       },
-
       // Admin routes
       {
         path: "admin/user-management",
@@ -111,16 +106,47 @@ const router = createRouter({
   routes,
 });
 
-//  router guider ，based on token authentication
-router.beforeEach((to, from, next) => {
-  const user = localStorage.getItem("user");
+// Safe function to get user from localStorage
+function getStoredUser() {
+  try {
+    const userStr = localStorage.getItem("user");
+    if (!userStr) return null;
+    
+    const user = JSON.parse(userStr);
+    // Validate that user object has required properties
+    if (user && typeof user === 'object' && user.id) {
+      return user;
+    }
+    return null;
+  } catch (error) {
+    console.warn('Invalid user data in localStorage, clearing...', error);
+    localStorage.removeItem("user");
+    return null;
+  }
+}
 
-  if (to.meta.requiresAuth && !user) {
+// Router guard with safe localStorage handling
+router.beforeEach((to, from, next) => {
+  try {
+    const user = getStoredUser();
+    const isAuthRequired = to.meta && to.meta.requiresAuth;
+    const isPublicRoute = ['/login', '/register', '/forget-password'].includes(to.path);
+    
+    if (isAuthRequired && !user) {
+      // Redirect to login if authentication required but no user
+      next("/login");
+    } else if (isPublicRoute && user) {
+      // Redirect to dashboard if user is logged in and trying to access public routes
+      next("/dashboard");
+    } else {
+      // Allow navigation
+      next();
+    }
+  } catch (error) {
+    console.error('Router guard error:', error);
+    // On any error, clear localStorage and redirect to login
+    localStorage.removeItem("user");
     next("/login");
-  } else if ((to.path === "/login" || to.path === "/register") && user) {
-    next("/dashboard");
-  } else {
-    next();
   }
 });
 

@@ -1,167 +1,212 @@
 <template>
   <div class="login-container">
-    <el-card class="login-card" shadow="hover">
+    <div class="login-card">
       <div class="login-header">
         <h2>Login - MarkMaster</h2>
       </div>
 
-      <el-form
-        :model="form"
-        ref="loginFormRef"
-        label-width="120px"
-        @submit.prevent="onSubmit"
-      >
-        <el-form-item label="Role" prop="role">
-          <el-select v-model="form.role" placeholder="Select Role">
-            <el-option label="Student" value="student" />
-            <el-option label="Lecturer" value="lecturer" />
-            <el-option label="Academic Advisor" value="academicAdvisor" />
-            <el-option label="Admin" value="admin" />
-          </el-select>
-        </el-form-item>
+      <div class="form-container">
+        <div class="form-group">
+          <label>Role</label>
+          <select v-model="loginData.role" class="form-select">
+            <option value="">Select Role</option>
+            <option value="student">Student</option>
+            <option value="lecturer">Lecturer</option>
+            <option value="academicAdvisor">Academic Advisor</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
 
-        <el-form-item label="Identifier" prop="identifier">
-          <el-input
-            v-model="form.identifier"
+        <div class="form-group">
+          <label>Identifier</label>
+          <input
+            v-model="loginData.identifier"
+            type="text"
             placeholder="Enter Email / Matric No. / Staff No."
-            autocomplete="off"
+            class="form-input"
+            @keyup.enter="performLogin"
           />
-        </el-form-item>
+        </div>
 
-        <el-form-item label="Password" prop="password">
-          <el-input
-            v-model="form.password"
+        <div class="form-group">
+          <label>Password</label>
+          <input
+            v-model="loginData.password"
             type="password"
             placeholder="Enter your password"
-            show-password
+            class="form-input"
+            @keyup.enter="performLogin"
           />
-        </el-form-item>
-
-        <el-form-item>
-          <el-button
-            type="primary"
-            :loading="loading"
-            @click="handleLogin"
-            style="width: 100%"
-          >
-            Login
-          </el-button>
-        </el-form-item>
-
-        <div style="text-align: right; margin-bottom: 1rem">
-          <el-button type="text" @click="goRegister">
-            Don't have an account? Register
-          </el-button>
-          <br />
-          <el-button type="text" @click="goForgetPassword">
-            Forgot Password?
-          </el-button>
         </div>
-      </el-form>
-    </el-card>
+
+        <div class="form-group">
+          <button
+            @click="performLogin"
+            :disabled="isSubmitting"
+            class="login-button"
+          >
+            {{ isSubmitting ? 'Logging in...' : 'Login' }}
+          </button>
+        </div>
+
+        <div class="links">
+          <button type="button" @click="navigateToRegister" class="link-button">
+            Don't have an account? Register
+          </button>
+          <button type="button" @click="navigateToForgotPassword" class="link-button">
+            Forgot Password?
+          </button>
+        </div>
+
+        <!-- Status Messages -->
+        <div v-if="statusMessage" :class="['status-message', statusType]">
+          {{ statusMessage }}
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
-<script setup>
-import { reactive, ref } from "vue";
-import { useRouter } from "vue-router";
-import { ElMessage } from 'element-plus';
-
-const router = useRouter();
-const loading = ref(false);
-const loginFormRef = ref(null);
-
-const form = reactive({
-  role: "",
-  identifier: "",
-  password: "",
-});
-
-// Simple validation function
-function validateForm() {
-  if (!form.role) {
-    ElMessage.error('Please select your role');
-    return false;
-  }
-  
-  if (!form.identifier) {
-    ElMessage.error('Please enter your identifier');
-    return false;
-  }
-  
-  if (!form.password) {
-    ElMessage.error('Please enter your password');
-    return false;
-  }
-  
-  return true;
-}
-
-async function handleLogin() {
-  // Simple validation
-  if (!validateForm()) {
-    return;
-  }
-
-  loading.value = true;
-  
-  try {
-    console.log('Attempting login with:', {
-      identifier: form.identifier,
-      role: form.role
-    });
-
-    const response = await fetch("http://localhost:8085/login.php", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({
-        identifier: form.identifier.trim(),
-        password: form.password,
-        role: form.role
-      }),
-    });
-
-    console.log('Response status:', response.status);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+<script>
+export default {
+  name: 'LoginView',
+  data() {
+    return {
+      isSubmitting: false,
+      statusMessage: '',
+      statusType: '',
+      loginData: {
+        role: '',
+        identifier: '',
+        password: ''
+      }
     }
+  },
+  methods: {
+    showMessage(message, type = 'info') {
+      this.statusMessage = message;
+      this.statusType = type;
+      setTimeout(() => {
+        this.statusMessage = '';
+        this.statusType = '';
+      }, 5000);
+    },
 
-    const data = await response.json();
-    console.log('Response data:', data);
-
-    if (data.success) {
-      // Store user data
-      localStorage.setItem("user", JSON.stringify(data.user));
-      ElMessage.success('Login successful!');
+    validateInput() {
+      if (!this.loginData.role) {
+        this.showMessage('Please select your role', 'error');
+        return false;
+      }
       
-      // Navigate to dashboard
-      router.push("/dashboard");
-    } else {
-      ElMessage.error(data.message || "Login failed");
+      if (!this.loginData.identifier) {
+        this.showMessage('Please enter your identifier', 'error');
+        return false;
+      }
+      
+      if (!this.loginData.password) {
+        this.showMessage('Please enter your password', 'error');
+        return false;
+      }
+
+      return true;
+    },
+
+    async performLogin() {
+      if (!this.validateInput()) {
+        return;
+      }
+
+      this.isSubmitting = true;
+      this.showMessage('Logging in...', 'info');
+      
+      try {
+        console.log('Login attempt:', {
+          identifier: this.loginData.identifier,
+          role: this.loginData.role
+        });
+
+        const requestData = {
+          identifier: this.loginData.identifier.trim(),
+          password: this.loginData.password,
+          role: this.loginData.role
+        };
+
+        const response = await fetch('http://localhost:8085/login.php', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(requestData)
+        });
+
+        console.log('Response status:', response.status);
+        
+        if (response.status !== 200) {
+          throw new Error('Server responded with status: ' + response.status);
+        }
+
+        const responseData = await response.json();
+        console.log('Login response:', responseData);
+
+        if (responseData.success) {
+          this.handleLoginSuccess(responseData.user);
+        } else {
+          this.showMessage(responseData.message || 'Login failed', 'error');
+        }
+        
+      } catch (error) {
+        console.error('Login error:', error);
+        this.showMessage('Login failed: ' + error.message, 'error');
+      } finally {
+        this.isSubmitting = false;
+      }
+    },
+
+    handleLoginSuccess(userData) {
+      try {
+        // Store user data safely
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        this.showMessage('Login successful! Redirecting...', 'success');
+        
+        // Navigate after a short delay
+        setTimeout(() => {
+          this.navigateBasedOnRole(userData.role);
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Error handling login success:', error);
+        this.showMessage('Login successful but navigation failed', 'error');
+      }
+    },
+
+    navigateBasedOnRole(userRole) {
+      try {
+        if (userRole === 'admin') {
+          this.$router.push('/admin/user-management');
+        } else if (userRole === 'lecturer') {
+          this.$router.push('/courses');
+        } else if (userRole === 'academicAdvisor') {
+          this.$router.push('/advisorworkspace');
+        } else {
+          this.$router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error('Navigation error:', error);
+        // Fallback to window.location
+        window.location.href = '/dashboard';
+      }
+    },
+
+    navigateToRegister() {
+      this.$router.push('/register');
+    },
+
+    navigateToForgotPassword() {
+      this.$router.push('/forget-password');
     }
-    
-  } catch (error) {
-    console.error('Login error:', error);
-    ElMessage.error("Login failed: " + error.message);
-  } finally {
-    loading.value = false;
   }
-}
-
-function onSubmit() {
-  handleLogin();
-}
-
-function goRegister() {
-  router.push("/register");
-}
-
-function goForgetPassword() {
-  router.push("/forget-password");
 }
 </script>
 
@@ -175,11 +220,10 @@ function goForgetPassword() {
   color: #3a3a3a;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   font-size: 16px;
-  user-select: none;
 }
 
 .login-card {
-  width: 360px;
+  width: 400px;
   padding: 32px;
   border-radius: 16px;
   background-color: #fff9f2;
@@ -196,20 +240,114 @@ function goForgetPassword() {
   font-size: 30px;
   color: #3a3a3a;
   letter-spacing: 1px;
+  margin: 0;
 }
 
-.el-form-item {
-  margin-bottom: 20px;
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.el-button--text {
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #7e7e7e;
+  font-size: 14px;
+}
+
+.form-input,
+.form-select {
+  padding: 12px;
+  border: 1px solid #d6d0c6;
+  border-radius: 10px;
+  background-color: #fcf9f5;
+  font-size: 14px;
+  color: #3a3a3a;
+  transition: border-color 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #d6a77a;
+}
+
+.login-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #e7eaf0;
+  color: #3a3a3a;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  transition: background-color 0.3s ease;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.login-button:hover:not(:disabled) {
+  background-color: #cfd8e3;
+  color: #1a2533;
+}
+
+.login-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.link-button {
+  background: none;
+  border: none;
   color: #7e7e7e;
   font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+  font-size: 14px;
 }
 
-.el-button--text:hover {
+.link-button:hover {
   color: #d6a77a;
-  background-color: transparent;
   text-decoration: underline;
+}
+
+.status-message {
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.status-message.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-message.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.status-message.info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
 }
 </style>
