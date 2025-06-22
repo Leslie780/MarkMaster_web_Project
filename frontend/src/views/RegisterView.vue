@@ -235,7 +235,14 @@ export default {
             ElMessage.error(res.data.message);
           }
         } catch (error) {
-          ElMessage.error("Registration failed. Server error.");
+          console.error("Registration failed:", {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            fullError: error
+          });
+          const msg = error.response?.data?.message || "Registration failed. Server error.";
+          ElMessage.error(msg);
         } finally {
           this.loading = false;
         }

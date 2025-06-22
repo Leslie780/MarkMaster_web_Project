@@ -4,7 +4,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 function getPDO() {
-    $host = 'localhost';
+    $host = '127.0.0.1';
     $db   = 'markmaster2'; 	// nama database anda
     $user = 'root';		//userid
     $pass = '';		//password anda
