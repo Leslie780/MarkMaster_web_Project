@@ -128,6 +128,16 @@ switch ($path) {
         }
         break;
 
+    case '/advisor_api':
+    if ($method === 'GET' || $method === 'POST') {
+        require_once __DIR__ . '/../src/advisor_api.php';
+    } else {
+        http_response_code(405);
+        echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+    }
+    break;
+
+
     default:
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Route not found']);
