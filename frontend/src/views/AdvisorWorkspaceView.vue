@@ -1,357 +1,961 @@
 <template>
-  <div class="advisor-dashboard" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
-   
-
-
-    <el-row :gutter="16" class="mb-4">
-      <el-col :span="8">
-        <el-card>
-          <div style="font-size: 18px; color: #777;">Candidate students</div>
-          <div style="font-size: 32px; font-weight: bold;">{{ candidateStudents.length }}</div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card>
-          <div style="font-size: 18px; color: #777;">My students</div>
-          <div style="font-size: 32px; font-weight: bold;">{{ myStudents.length }}</div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card>
-          <div style="font-size: 18px; color: #777;">Student currently selected</div>
-          <div style="font-size: 32px; font-weight: bold;">
-            {{ detailData ? detailData.name : '-' }}
+  <div class="advisor-dashboard">
+    <!-- 页面头部 -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="title-section">
+          <h1 class="page-title">
+            <el-icon class="title-icon"><UserFilled /></el-icon>
+            Advisor Dashboard
+          </h1>
+          <p class="page-subtitle">
+            Manage your students and track their academic progress
+          </p>
+        </div>
+        <div class="header-stats">
+          <div class="stat-card">
+            <div class="stat-number">{{ candidateStudents.length }}</div>
+            <div class="stat-label">Candidates</div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-  
-    <el-card class="mb-4" shadow="hover">
-      <div class="section-title">
-        <el-icon><User /></el-icon>
-        Candidate students
+          <div class="stat-card">
+            <div class="stat-number">{{ myStudents.length }}</div>
+            <div class="stat-label">My Students</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">{{ detailData ? "1" : "0" }}</div>
+            <div class="stat-label">Selected</div>
+          </div>
+        </div>
+        <div class="header-actions">
+          <el-button
+            type="success"
+            size="large"
+            class="export-button"
+            @click="exportReports"
+            :disabled="myStudents.length === 0"
+          >
+            <el-icon><Download /></el-icon>
+            Export Reports
+          </el-button>
+        </div>
       </div>
-      <el-table :data="candidateStudents" style="width: 100%;" size="small">
-        <el-table-column prop="matric_no" label="Matric No." width="120" />
-        <el-table-column prop="name" label="Name" width="150" />
-        <el-table-column label="Operation" width="100">
-          <template #default="{ row }">
-            <el-button size="small" type="primary" @click="addStudent(row.student_id)">
-              Add
+    </div>
+
+    <!-- 候选学生列表 -->
+    <div class="components-section">
+      <div class="component-card">
+        <div class="card-header">
+          <div class="component-info">
+            <h2 class="component-title">
+              <el-icon class="detail-icon"><User /></el-icon>
+              Candidate Students
+            </h2>
+          </div>
+        </div>
+        <div class="card-content">
+          <el-table
+            :data="candidateStudents"
+            style="width: 100%"
+            size="default"
+          >
+            <el-table-column prop="matric_no" label="Matric No." width="150" />
+            <el-table-column prop="name" label="Name" min-width="200" />
+            <el-table-column label="Action" width="120">
+              <template #default="{ row }">
+                <el-button
+                  size="small"
+                  type="primary"
+                  class="add-button"
+                  @click="addStudent(row.student_id)"
+                >
+                  Add
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div v-if="candidateStudents.length === 0" class="no-scores">
+            No candidate students available
+          </div>
+        </div>
+      </div>
+
+      <!-- 我的学生列表 -->
+      <div class="component-card">
+        <div class="card-header">
+          <div class="component-info">
+            <h2 class="component-title">
+              <el-icon class="detail-icon"><UserFilled /></el-icon>
+              My Students
+            </h2>
+          </div>
+        </div>
+        <div class="card-content">
+          <el-table :data="myStudents" style="width: 100%" size="default">
+            <el-table-column prop="matric_no" label="Matric No." width="150" />
+            <el-table-column prop="name" label="Name" min-width="200" />
+            <el-table-column label="Actions" width="200">
+              <template #default="{ row }">
+                <el-button size="small" @click="showDetails(row.student_id)"
+                  >Details</el-button
+                >
+                <el-button
+                  size="small"
+                  type="danger"
+                  @click="removeStudent(row.student_id)"
+                  >Remove</el-button
+                >
+              </template>
+            </el-table-column>
+          </el-table>
+          <div v-if="myStudents.length === 0" class="no-scores">
+            No students assigned yet
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 学生详情 -->
+    <div v-if="detailData" class="components-section">
+      <div class="component-card">
+        <div class="card-header">
+          <div class="component-info">
+            <h2 class="component-title">
+              <el-icon class="detail-icon"><User /></el-icon>
+              Student Details - {{ detailData.name }}
+            </h2>
+          </div>
+        </div>
+        <div class="card-content">
+          <!-- 基本信息 -->
+          <div class="component-details">
+            <div class="detail-item">
+              <el-icon class="detail-icon"><User /></el-icon>
+              <span class="detail-label">Name:</span>
+              <span class="detail-value">{{ detailData.name }}</span>
+            </div>
+            <div class="detail-item">
+              <el-icon class="detail-icon"><Document /></el-icon>
+              <span class="detail-label">Matric No:</span>
+              <span class="detail-value">{{ detailData.matric_no }}</span>
+            </div>
+            <div class="detail-item">
+              <el-icon class="detail-icon"><Phone /></el-icon>
+              <span class="detail-label">Phone:</span>
+              <span class="detail-value">{{ detailData.phone }}</span>
+            </div>
+          </div>
+
+          <!-- 学期成绩 -->
+          <div
+            v-if="detailData.semesters && detailData.semesters.length"
+            class="scores-preview"
+          >
+            <div class="scores-header">
+              <h4 class="scores-title">Academic Records</h4>
+            </div>
+            <el-table
+              :data="detailData.semesters"
+              size="small"
+              style="margin-bottom: 20px"
+            >
+              <el-table-column label="Academic Year/Semester" min-width="200">
+                <template #default="{ row }">
+                  {{ row.academic_year }} - {{ row.semester }} Semester
+                </template>
+              </el-table-column>
+              <el-table-column label="CGPA" prop="cgpa" width="100" />
+              <el-table-column label="Status" width="120">
+                <template #default="{ row }">
+                  <el-tag
+                    :type="
+                      row.academic_status === 'high-risk' ? 'danger' : 'success'
+                    "
+                  >
+                    {{
+                      row.academic_status === "high-risk"
+                        ? "High Risk"
+                        : "Active"
+                    }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="Courses">
+                <template #default="{ row }">
+                  <el-table :data="row.courses" border size="mini">
+                    <el-table-column prop="course_name" label="Course" />
+                    <el-table-column prop="course_code" label="Code" />
+                    <el-table-column
+                      prop="total_score"
+                      label="Score"
+                      width="80"
+                    />
+                    <el-table-column prop="grade" label="Grade" width="70" />
+                    <el-table-column
+                      prop="credit_hours"
+                      label="Credits"
+                      width="80"
+                    />
+                  </el-table>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 导师评论 -->
+          <div class="scores-preview">
+            <div class="scores-header">
+              <h4 class="scores-title">
+                <el-icon class="detail-icon"><ChatLineRound /></el-icon>
+                Advisor Comments
+              </h4>
+            </div>
+            <div class="scores-list">
+              <div
+                v-for="comment in detailData.advisor_comments"
+                :key="comment.id"
+                class="score-item"
+              >
+                <div class="student-name">
+                  {{ comment.content }}
+                  <small style="color: #999; margin-left: 10px">{{
+                    comment.created_at
+                  }}</small>
+                </div>
+                <el-button
+                  type="danger"
+                  size="small"
+                  @click="deleteComment(comment.id)"
+                >
+                  Delete
+                </el-button>
+              </div>
+              <div v-if="!detailData.advisor_comments.length" class="no-scores">
+                No comments yet
+              </div>
+            </div>
+            <div style="margin-top: 16px; display: flex; gap: 12px">
+              <el-input
+                v-model="commentInput"
+                placeholder="Add new comment"
+                style="flex: 1"
+              />
+              <el-button type="primary" @click="addComment"
+                >Add Comment</el-button
+              >
+            </div>
+          </div>
+
+          <!-- 预约历史 -->
+          <div class="scores-preview" style="margin-top: 24px">
+            <div class="scores-header">
+              <h4 class="scores-title">
+                <el-icon class="detail-icon"><Calendar /></el-icon>
+                Appointment History
+              </h4>
+            </div>
+            <div class="scores-list">
+              <div
+                v-for="meeting in detailData.advisor_appointments"
+                :key="meeting.id"
+                class="score-item"
+              >
+                <div class="student-name">
+                  <strong>{{ meeting.meeting_time }}</strong
+                  >: {{ meeting.content }}
+                </div>
+                <el-button
+                  type="danger"
+                  size="small"
+                  @click="deleteMeeting(meeting.id)"
+                >
+                  Delete
+                </el-button>
+              </div>
+              <div
+                v-if="!detailData.advisor_appointments.length"
+                class="no-scores"
+              >
+                No appointments yet
+              </div>
+            </div>
+            <div
+              style="
+                margin-top: 16px;
+                display: flex;
+                gap: 12px;
+                align-items: end;
+              "
+            >
+              <el-input
+                v-model="meetingInput"
+                placeholder="Appointment description"
+                style="flex: 1"
+              />
+              <el-date-picker
+                v-model="meetingTimeInput"
+                type="date"
+                placeholder="Select date"
+                style="width: 150px"
+              />
+              <el-button type="primary" @click="addMeeting"
+                >Add Appointment</el-button
+              >
+            </div>
+          </div>
+
+          <!-- Export Individual Report -->
+          <div class="card-footer">
+            <el-button
+              type="success"
+              @click="exportIndividualReport(detailData.student_id)"
+              style="width: 100%"
+            >
+              <el-icon><Download /></el-icon>
+              Export Individual Consultation Report
             </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-empty v-if="candidateStudents.length === 0" description="No candidate students available">
-
-      </el-empty>
-    </el-card>
-
-
-   
-    <el-card class="mb-4" shadow="hover">
-      <div class="section-title">
-        <el-icon><UserFilled /></el-icon>
-        My students
+          </div>
+        </div>
       </div>
-      <el-table :data="myStudents" style="width: 100%;" size="small">
-        <el-table-column prop="matric_no" label="Matric No." width="120" />
-        <el-table-column prop="name" label="Name" width="150" />
-        <el-table-column label="Operation" width="180">
-          <template #default="{ row }">
-            <el-button size="small" @click="showDetails(row.student_id)">details</el-button>
-            <el-button size="small" type="danger" @click="removeStudent(row.student_id)">remove</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-empty v-if="myStudents.length === 0" description="No student yet"></el-empty>
-    </el-card>
+    </div>
 
-
-
-    <el-card v-if="detailData" shadow="hover">
-      <div class="section-title">
-        <el-icon><User /></el-icon>
-        Student details info
+    <!-- 空状态提示 -->
+    <div v-if="!detailData" class="empty-state">
+      <div class="select-course-prompt">
+        <el-icon class="prompt-icon"><Select /></el-icon>
+        <p>Select a student from "My Students" to view detailed information</p>
       </div>
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="Name">{{ detailData.name }}</el-descriptions-item>
-        <el-descriptions-item label="Matric No.">{{ detailData.matric_no }}</el-descriptions-item>
-        <el-descriptions-item label="Tel">{{ detailData.phone }}</el-descriptions-item>
-      </el-descriptions>
-
-      <div v-if="detailData.semesters && detailData.semesters.length" class="mb-2 mt-4">
-        <h4>Semester Results</h4>
-        <el-table :data="detailData.semesters" size="small" style="margin-bottom: 10px;">
-          <el-table-column label="academic year/semester" min-width="120">
-            <template #default="{ row }">
-              {{ row.academic_year }} academic year -- {{ row.semester }}semester
-            </template>
-          </el-table-column>
-          <el-table-column label="CGPA" prop="cgpa" width="80"/>
-          <el-table-column label="academic status" width="120">
-            <template #default="{ row }">
-              <el-tag :type="row.academic_status === 'high-risk' ? 'danger' : 'success'">
-                {{ row.academic_status === 'high-risk' ? 'High risk' : 'Active' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="course list">
-            <template #default="{ row }">
-              <el-table :data="row.courses" border size="mini">
-                <el-table-column prop="course_name" label="course" />
-                <el-table-column prop="course_code" label="course code" />
-                <el-table-column prop="total_score" label="result" width="70"/>
-                <el-table-column prop="grade" label="grade" width="60"/>
-                <el-table-column prop="credit_hours" label="credit" width="60"/>
-              </el-table>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-
-
-     
-<el-divider>Advisor Comment</el-divider>
-<el-list size="small" bordered style="margin-bottom: 8px;">
-  <el-list-item
-  v-for="comment in detailData.advisor_comments"
-  :key="comment.id"
-  style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;"
->
-  <span>
-    {{ comment.content }}
-    <span style="color: #888; font-size: 12px; margin-left: 10px;">（{{ comment.created_at }}）</span>
-  </span>
-  <el-button
-    type="danger"
-    size="mini"
-    style="border-radius: 8px; margin-left: 12px; padding: 2px 12px;"
-    @click="deleteComment(comment.id)"
-  >delete</el-button>
-</el-list-item>
-
-  <el-empty v-if="!detailData.advisor_comments.length" description="No comment yet" />
-</el-list>
-<el-input
-  v-model="commentInput"
-  placeholder="add new comment"
-  size="small"
-  style="width: 240px; margin-right: 10px;"
-/>
-<el-button type="primary" size="small" @click="addComment">Add commment</el-button>
-
-
-<el-divider>Appointment History</el-divider>
-<el-list size="small" bordered style="margin-bottom: 8px;">
- <el-list-item
-  v-for="meeting in detailData.advisor_appointments"
-  :key="meeting.id"
-  style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;"
->
-  <span>
-    {{ meeting.meeting_time }}: {{ meeting.content }}
-  </span>
-  <el-button
-    type="danger"
-    size="mini"
-    style="border-radius: 8px; margin-left: 12px; padding: 2px 12px;"
-    @click="deleteMeeting(meeting.id)"
-  >delete</el-button>
-</el-list-item>
-
-  <el-empty v-if="!detailData.advisor_appointments.length" description="No appointments yet" />
-</el-list>
-<el-input
-  v-model="meetingInput"
-  placeholder="appointment info"
-  size="small"
-  style="width: 180px; margin-right: 8px;"
-/>
-<el-date-picker
-  v-model="meetingTimeInput"
-  type="date"
-  placeholder="select date"
-  size="small"
-  style="width: 130px; margin-right: 10px;"
-/>
-<el-button type="primary" size="small" @click="addMeeting">Add appointment</el-button>
-
-    </el-card>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { User, UserFilled } from '@element-plus/icons-vue'
+import { ref, onMounted } from "vue";
+import {
+  User,
+  UserFilled,
+  Document,
+  Phone,
+  ChatLineRound,
+  Calendar,
+  Select,
+  Download,
+} from "@element-plus/icons-vue";
 
-const user = JSON.parse(localStorage.getItem('user')) || {};
+const user = JSON.parse(localStorage.getItem("user")) || {};
 const advisor_id = user.id;
 
-const candidateStudents = ref([])
-const myStudents = ref([])
-const detailData = ref(null)
+const candidateStudents = ref([]);
+const myStudents = ref([]);
+const detailData = ref(null);
 
-const commentInput = ref('')
-const meetingInput = ref('')
-const meetingTimeInput = ref('')
-
+const commentInput = ref("");
+const meetingInput = ref("");
+const meetingTimeInput = ref("");
 
 function fetchCandidateStudents() {
-  fetch('http://localhost:8085/advisor_api?action=candidate_list')
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) candidateStudents.value = data.data
-    })
+  fetch("http://localhost:8085/advisor_api?action=candidate_list")
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success) candidateStudents.value = data.data;
+    });
 }
-
 
 function fetchMyStudents() {
-  fetch(`http://localhost:8085/advisor_api?action=students_detail&advisor_id=${advisor_id}`)
-    .then(res => res.json())
-    .then(data => {
+  fetch(
+    `http://localhost:8085/advisor_api?action=students_detail&advisor_id=${advisor_id}`
+  )
+    .then((res) => res.json())
+    .then((data) => {
       if (data.success && Array.isArray(data.data)) {
-        myStudents.value = data.data.map(stu => ({
+        myStudents.value = data.data.map((stu) => ({
           student_id: stu.student_id,
           name: stu.name,
-          matric_no: stu.matric_no
-        }))
+          matric_no: stu.matric_no,
+        }));
       }
-    })
+    });
 }
-
 
 function addStudent(student_id) {
-  fetch('http://localhost:8085/advisor_api?action=add_student', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `advisor_id=${advisor_id}&student_id=${student_id}`
+  fetch("http://localhost:8085/advisor_api?action=add_student", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `advisor_id=${advisor_id}&student_id=${student_id}`,
   })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) fetchMyStudents()
-    })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success) fetchMyStudents();
+    });
 }
-
 
 function removeStudent(student_id) {
-  fetch('http://localhost:8085/advisor_api?action=remove_student', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `advisor_id=${advisor_id}&student_id=${student_id}`
+  fetch("http://localhost:8085/advisor_api?action=remove_student", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `advisor_id=${advisor_id}&student_id=${student_id}`,
   })
-    .then(res => res.json())
-    .then(data => {
+    .then((res) => res.json())
+    .then((data) => {
       if (data.success) {
-        fetchMyStudents()
-        if (detailData.value && detailData.value.student_id === student_id) detailData.value = null
+        fetchMyStudents();
+        if (detailData.value && detailData.value.student_id === student_id)
+          detailData.value = null;
       }
-    })
+    });
 }
-
 
 function showDetails(student_id) {
-  fetch(`http://localhost:8085/advisor_api?action=students_detail&advisor_id=${advisor_id}`)
-    .then(res => res.json())
-    .then(data => {
+  fetch(
+    `http://localhost:8085/advisor_api?action=students_detail&advisor_id=${advisor_id}`
+  )
+    .then((res) => res.json())
+    .then((data) => {
       if (data.success && Array.isArray(data.data)) {
-        const found = data.data.find(stu => stu.student_id === student_id)
-        if (found) detailData.value = found
+        const found = data.data.find((stu) => stu.student_id === student_id);
+        if (found) detailData.value = found;
       }
-    })
+    });
 }
 
-
 function addComment() {
-  if (!detailData.value) return
-  fetch('http://localhost:8085/advisor_api?action=add_comment', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `advisor_id=${advisor_id}&student_id=${detailData.value.student_id}&content=${encodeURIComponent(commentInput.value)}`
+  if (!detailData.value) return;
+  fetch("http://localhost:8085/advisor_api?action=add_comment", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `advisor_id=${advisor_id}&student_id=${
+      detailData.value.student_id
+    }&content=${encodeURIComponent(commentInput.value)}`,
   })
-    .then(res => res.json())
-    .then(data => {
+    .then((res) => res.json())
+    .then((data) => {
       if (data.success) {
-        commentInput.value = ''
-        showDetails(detailData.value.student_id)
+        commentInput.value = "";
+        showDetails(detailData.value.student_id);
       }
-    })
+    });
 }
 
 function deleteComment(comment_id) {
-  if (!detailData.value) return
-  fetch('http://localhost:8085/advisor_api?action=delete_comment', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `advisor_id=${advisor_id}&comment_id=${comment_id}`
+  if (!detailData.value) return;
+  fetch("http://localhost:8085/advisor_api?action=delete_comment", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `advisor_id=${advisor_id}&comment_id=${comment_id}`,
   })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) showDetails(detailData.value.student_id)
-    })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success) showDetails(detailData.value.student_id);
+    });
 }
 
 function addMeeting() {
-  if (!detailData.value) return
+  if (!detailData.value) return;
   if (!meetingTimeInput.value) {
-    alert('Please slecet appointment date');
+    alert("Please select appointment date");
     return;
   }
 
-
-  let dateStr = '';
+  let dateStr = "";
   if (meetingTimeInput.value instanceof Date) {
-    const d = meetingTimeInput.value
-    dateStr = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
-  } else if (typeof meetingTimeInput.value === 'string') {
-    dateStr = meetingTimeInput.value
+    const d = meetingTimeInput.value;
+    dateStr = `${d.getFullYear()}-${(d.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+  } else if (typeof meetingTimeInput.value === "string") {
+    dateStr = meetingTimeInput.value;
   }
 
-  fetch('http://localhost:8085/advisor_api?action=add_meeting', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `advisor_id=${advisor_id}&student_id=${detailData.value.student_id}&content=${encodeURIComponent(meetingInput.value)}&meeting_time=${dateStr}`
+  fetch("http://localhost:8085/advisor_api?action=add_meeting", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `advisor_id=${advisor_id}&student_id=${
+      detailData.value.student_id
+    }&content=${encodeURIComponent(
+      meetingInput.value
+    )}&meeting_time=${dateStr}`,
   })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      meetingInput.value = ''
-      meetingTimeInput.value = ''
-      showDetails(detailData.value.student_id)
-    }
-  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success) {
+        meetingInput.value = "";
+        meetingTimeInput.value = "";
+        showDetails(detailData.value.student_id);
+      }
+    });
 }
 
-
 function deleteMeeting(meeting_id) {
-  if (!detailData.value) return
-  fetch('http://localhost:8085/advisor_api?action=delete_meeting', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `advisor_id=${advisor_id}&meeting_id=${meeting_id}`
+  if (!detailData.value) return;
+  fetch("http://localhost:8085/advisor_api?action=delete_meeting", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `advisor_id=${advisor_id}&meeting_id=${meeting_id}`,
   })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) showDetails(detailData.value.student_id)
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success) showDetails(detailData.value.student_id);
+    });
+}
+
+// Export functions
+function exportReports() {
+  // Export all students' consultation reports
+  fetch(
+    `http://localhost:8085/advisor_api?action=export_all_reports&advisor_id=${advisor_id}`
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success) {
+        generateAllReportsCSV(data.data);
+      } else {
+        alert("Failed to export reports");
+      }
     })
+    .catch((error) => {
+      console.error("Export error:", error);
+      // Fallback: generate report from current data
+      generateAllReportsFromCurrentData();
+    });
+}
+
+function exportIndividualReport(student_id) {
+  // Export individual student consultation report
+  fetch(
+    `http://localhost:8085/advisor_api?action=export_student_report&advisor_id=${advisor_id}&student_id=${student_id}`
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success) {
+        generateIndividualReportCSV(data.data);
+      } else {
+        alert("Failed to export individual report");
+      }
+    })
+    .catch((error) => {
+      console.error("Export error:", error);
+      // Fallback: generate report from current detail data
+      if (detailData.value) {
+        generateIndividualReportFromCurrentData(detailData.value);
+      }
+    });
+}
+
+function generateAllReportsCSV(data) {
+  const csvContent = generateCSVContent(data, "all");
+  downloadCSV(
+    csvContent,
+    `All_Students_Consultation_Reports_${
+      new Date().toISOString().split("T")[0]
+    }.csv`
+  );
+}
+
+function generateIndividualReportCSV(data) {
+  const csvContent = generateCSVContent([data], "individual");
+  const studentName = data.name.replace(/[^a-zA-Z0-9]/g, "_");
+  downloadCSV(
+    csvContent,
+    `${studentName}_Consultation_Report_${
+      new Date().toISOString().split("T")[0]
+    }.csv`
+  );
+}
+
+function generateAllReportsFromCurrentData() {
+  // Fallback function using current myStudents data
+  const reportData = myStudents.value.map((student) => ({
+    name: student.name,
+    matric_no: student.matric_no,
+    student_id: student.student_id,
+    total_comments: 0,
+    total_appointments: 0,
+    last_consultation: "N/A",
+  }));
+
+  const csvContent = generateCSVContent(reportData, "summary");
+  downloadCSV(
+    csvContent,
+    `Students_Summary_Report_${new Date().toISOString().split("T")[0]}.csv`
+  );
+}
+
+function generateIndividualReportFromCurrentData(student) {
+  const csvContent = generateDetailedCSVContent(student);
+  const studentName = student.name.replace(/[^a-zA-Z0-9]/g, "_");
+  downloadCSV(
+    csvContent,
+    `${studentName}_Detailed_Report_${
+      new Date().toISOString().split("T")[0]
+    }.csv`
+  );
+}
+
+function generateCSVContent(data, type) {
+  let headers = [];
+  let rows = [];
+
+  if (type === "all" || type === "summary") {
+    headers = [
+      "Student Name",
+      "Matric No",
+      "Total Comments",
+      "Total Appointments",
+      "Last Consultation",
+      "Current CGPA",
+      "Academic Status",
+    ];
+
+    rows = data.map((student) => [
+      student.name || "",
+      student.matric_no || "",
+      student.total_comments || 0,
+      student.total_appointments || 0,
+      student.last_consultation || "N/A",
+      student.current_cgpa || "N/A",
+      student.academic_status || "N/A",
+    ]);
+  }
+
+  return [headers, ...rows]
+    .map((row) =>
+      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    )
+    .join("\n");
+}
+
+function generateDetailedCSVContent(student) {
+  const headers = ["Section", "Type", "Content", "Date", "Additional Info"];
+  const rows = [];
+
+  // Basic information
+  rows.push(["Basic Info", "Name", student.name, "", ""]);
+  rows.push(["Basic Info", "Matric No", student.matric_no, "", ""]);
+  rows.push(["Basic Info", "Phone", student.phone || "N/A", "", ""]);
+
+  // Academic records
+  if (student.semesters && student.semesters.length > 0) {
+    student.semesters.forEach((semester) => {
+      rows.push([
+        "Academic Record",
+        "Semester",
+        `${semester.academic_year} - ${semester.semester}`,
+        "",
+        `CGPA: ${semester.cgpa}, Status: ${semester.academic_status}`,
+      ]);
+
+      if (semester.courses && semester.courses.length > 0) {
+        semester.courses.forEach((course) => {
+          rows.push([
+            "Course",
+            course.course_code,
+            course.course_name,
+            "",
+            `Score: ${course.total_score}, Grade: ${course.grade}, Credits: ${course.credit_hours}`,
+          ]);
+        });
+      }
+    });
+  }
+
+  // Comments
+  if (student.advisor_comments && student.advisor_comments.length > 0) {
+    student.advisor_comments.forEach((comment) => {
+      rows.push([
+        "Comment",
+        "Advisor Comment",
+        comment.content,
+        comment.created_at,
+        "",
+      ]);
+    });
+  }
+
+  // Appointments
+  if (student.advisor_appointments && student.advisor_appointments.length > 0) {
+    student.advisor_appointments.forEach((appointment) => {
+      rows.push([
+        "Appointment",
+        "Meeting",
+        appointment.content,
+        appointment.meeting_time,
+        "",
+      ]);
+    });
+  }
+
+  return [headers, ...rows]
+    .map((row) =>
+      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    )
+    .join("\n");
+}
+
+function downloadCSV(csvContent, filename) {
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 }
 
 onMounted(() => {
-  fetchCandidateStudents()
-  fetchMyStudents()
-})
+  fetchCandidateStudents();
+  fetchMyStudents();
+});
 </script>
 
 <style scoped>
-.mb-4 { margin-bottom: 24px; }
-.mt-4 { margin-top: 24px; }
-.section-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 10px;
+.advisor-dashboard {
+  padding: 24px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+}
+
+/* 页面头部 */
+.page-header {
+  margin-bottom: 32px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.header-actions {
+  margin-left: 24px;
+}
+
+.export-button {
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 12px;
+  font-weight: 500;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.title-section {
+  flex: 1;
+}
+
+.page-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.title-icon {
+  color: #409eff;
+  font-size: 36px;
+}
+
+.page-subtitle {
+  font-size: 16px;
+  color: #7f8c8d;
+  margin: 0;
+}
+
+.header-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.stat-card {
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px 24px;
+  border-radius: 12px;
+  min-width: 100px;
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* 组件网格 */
+.components-section {
+  margin-bottom: 32px;
+}
+
+.component-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.component-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.component-info {
+  flex: 1;
+}
+
+.component-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-content {
+  padding: 24px;
+}
+
+.component-details {
+  margin-bottom: 20px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.detail-icon {
+  color: #409eff;
+  font-size: 16px;
+}
+
+.detail-label {
+  color: #7f8c8d;
+  font-weight: 500;
+  min-width: 80px;
+}
+
+.detail-value {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.scores-preview {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.scores-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.scores-title {
+  font-weight: 500;
+  color: #2c3e50;
+  font-size: 14px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scores-list > .score-item:not(:last-child) {
+  margin-bottom: 8px;
+}
+
+.score-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.student-name {
+  color: #2c3e50;
+  flex: 1;
+}
+
+.no-scores {
+  text-align: center;
+  color: #95a5a6;
+  padding: 16px;
+  font-size: 14px;
+}
+
+.add-button {
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+/* 空状态 */
+.empty-state {
+  margin-top: 60px;
+}
+
+.select-course-prompt {
+  text-align: center;
+  padding: 80px 20px;
+  color: #7f8c8d;
+}
+
+.prompt-icon {
+  font-size: 64px;
+  color: #ddd;
+  margin-bottom: 16px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .advisor-dashboard {
+    padding: 16px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    gap: 24px;
+    text-align: center;
+  }
+
+  .header-stats {
+    justify-content: center;
+  }
 }
 </style>

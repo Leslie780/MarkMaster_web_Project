@@ -28,13 +28,11 @@ $action = $_REQUEST['action'] ?? '';
 
 if ($action === 'candidate_list') {
     $sql = "
-        SELECT u.id as student_id, u.name, u.matric_no, c.academic_year, c.semester, COUNT(cs.course_id) as course_count
-        FROM course_students cs
-        JOIN users u ON cs.student_id = u.id
-        JOIN courses c ON cs.course_id = c.id
-        WHERE u.role = 'student'
-        GROUP BY u.id, c.academic_year, c.semester
-        HAVING course_count >= 4
+        SELECT u.id as student_id, u.name, u.matric_no
+FROM users u
+WHERE u.role = 'student'
+  AND u.id NOT IN (SELECT student_id FROM advisor_students)
+
     ";
     $stmt = $conn->query($sql);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -139,7 +137,7 @@ if ($action === 'students_detail') {
         ];
         if (!isset($student_semesters[$sid])) continue;
         foreach ($student_semesters[$sid] as $semkey => $courses_this_sem) {
-            if (count($courses_this_sem) < 4) continue;
+            if (count($courses_this_sem) ===0) continue;
             list($academic_year, $semester) = explode('|', $semkey);
             $total_points = 0;
             $total_credits = 0;
