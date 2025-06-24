@@ -6,6 +6,7 @@
         <p>Please enter your registered email and a new password.</p>
       </div>
 
+      
       <el-form :model="form" @submit.prevent="onSubmit" label-width="120px">
         <el-form-item label="Email">
           <el-input v-model="form.email" autocomplete="off" />
