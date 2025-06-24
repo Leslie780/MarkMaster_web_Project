@@ -33,6 +33,7 @@
             class="export-button"
             @click="exportReports"
             :disabled="myStudents.length === 0"
+            :loading="exportLoading"
           >
             <el-icon><Download /></el-icon>
             Export Reports
@@ -309,6 +310,7 @@
               type="success"
               @click="exportIndividualReport(detailData.student_id)"
               style="width: 100%"
+              :loading="individualExportLoading"
             >
               <el-icon><Download /></el-icon>
               Export Individual Consultation Report
@@ -340,6 +342,7 @@ import {
   Select,
   Download,
 } from "@element-plus/icons-vue";
+import { ElMessage } from 'element-plus';
 
 const user = JSON.parse(localStorage.getItem("user")) || {};
 const advisor_id = user.id;
@@ -347,6 +350,8 @@ const advisor_id = user.id;
 const candidateStudents = ref([]);
 const myStudents = ref([]);
 const detailData = ref(null);
+const exportLoading = ref(false);
+const individualExportLoading = ref(false);
 
 const commentInput = ref("");
 const meetingInput = ref("");
@@ -357,6 +362,10 @@ function fetchCandidateStudents() {
     .then((res) => res.json())
     .then((data) => {
       if (data.success) candidateStudents.value = data.data;
+    })
+    .catch((error) => {
+      console.error('Error fetching candidate students:', error);
+      ElMessage.error('Failed to fetch candidate students');
     });
 }
 
@@ -373,6 +382,10 @@ function fetchMyStudents() {
           matric_no: stu.matric_no,
         }));
       }
+    })
+    .catch((error) => {
+      console.error('Error fetching my students:', error);
+      ElMessage.error('Failed to fetch student list');
     });
 }
 
@@ -384,7 +397,17 @@ function addStudent(student_id) {
   })
     .then((res) => res.json())
     .then((data) => {
-      if (data.success) fetchMyStudents();
+      if (data.success) {
+        fetchMyStudents();
+        fetchCandidateStudents(); // Refresh candidates list
+        ElMessage.success('Student added successfully');
+      } else {
+        ElMessage.error(data.message || 'Failed to add student');
+      }
+    })
+    .catch((error) => {
+      console.error('Error adding student:', error);
+      ElMessage.error('Failed to add student');
     });
 }
 
@@ -398,9 +421,17 @@ function removeStudent(student_id) {
     .then((data) => {
       if (data.success) {
         fetchMyStudents();
+        fetchCandidateStudents(); // Refresh candidates list
         if (detailData.value && detailData.value.student_id === student_id)
           detailData.value = null;
+        ElMessage.success('Student removed successfully');
+      } else {
+        ElMessage.error(data.message || 'Failed to remove student');
       }
+    })
+    .catch((error) => {
+      console.error('Error removing student:', error);
+      ElMessage.error('Failed to remove student');
     });
 }
 
@@ -414,11 +445,19 @@ function showDetails(student_id) {
         const found = data.data.find((stu) => stu.student_id === student_id);
         if (found) detailData.value = found;
       }
+    })
+    .catch((error) => {
+      console.error('Error fetching student details:', error);
+      ElMessage.error('Failed to fetch student details');
     });
 }
 
 function addComment() {
-  if (!detailData.value) return;
+  if (!detailData.value || !commentInput.value.trim()) {
+    ElMessage.warning('Please enter a comment');
+    return;
+  }
+  
   fetch("http://localhost:8085/advisor_api?action=add_comment", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -431,7 +470,14 @@ function addComment() {
       if (data.success) {
         commentInput.value = "";
         showDetails(detailData.value.student_id);
+        ElMessage.success('Comment added successfully');
+      } else {
+        ElMessage.error(data.message || 'Failed to add comment');
       }
+    })
+    .catch((error) => {
+      console.error('Error adding comment:', error);
+      ElMessage.error('Failed to add comment');
     });
 }
 
@@ -444,14 +490,27 @@ function deleteComment(comment_id) {
   })
     .then((res) => res.json())
     .then((data) => {
-      if (data.success) showDetails(detailData.value.student_id);
+      if (data.success) {
+        showDetails(detailData.value.student_id);
+        ElMessage.success('Comment deleted successfully');
+      } else {
+        ElMessage.error(data.message || 'Failed to delete comment');
+      }
+    })
+    .catch((error) => {
+      console.error('Error deleting comment:', error);
+      ElMessage.error('Failed to delete comment');
     });
 }
 
 function addMeeting() {
-  if (!detailData.value) return;
+  if (!detailData.value || !meetingInput.value.trim()) {
+    ElMessage.warning('Please enter appointment description');
+    return;
+  }
+  
   if (!meetingTimeInput.value) {
-    alert("Please select appointment date");
+    ElMessage.warning('Please select appointment date');
     return;
   }
 
@@ -480,7 +539,14 @@ function addMeeting() {
         meetingInput.value = "";
         meetingTimeInput.value = "";
         showDetails(detailData.value.student_id);
+        ElMessage.success('Appointment added successfully');
+      } else {
+        ElMessage.error(data.message || 'Failed to add appointment');
       }
+    })
+    .catch((error) => {
+      console.error('Error adding appointment:', error);
+      ElMessage.error('Failed to add appointment');
     });
 }
 
@@ -493,13 +559,23 @@ function deleteMeeting(meeting_id) {
   })
     .then((res) => res.json())
     .then((data) => {
-      if (data.success) showDetails(detailData.value.student_id);
+      if (data.success) {
+        showDetails(detailData.value.student_id);
+        ElMessage.success('Appointment deleted successfully');
+      } else {
+        ElMessage.error(data.message || 'Failed to delete appointment');
+      }
+    })
+    .catch((error) => {
+      console.error('Error deleting appointment:', error);
+      ElMessage.error('Failed to delete appointment');
     });
 }
 
 // Export functions
 function exportReports() {
-  // Export all students' consultation reports
+  exportLoading.value = true;
+  
   fetch(
     `http://localhost:8085/advisor_api?action=export_all_reports&advisor_id=${advisor_id}`
   )
@@ -507,19 +583,27 @@ function exportReports() {
     .then((data) => {
       if (data.success) {
         generateAllReportsCSV(data.data);
+        ElMessage.success('Reports exported successfully');
       } else {
-        alert("Failed to export reports");
+        ElMessage.error('Failed to export reports: ' + (data.message || 'Unknown error'));
+        // Fallback: generate report from current data
+        generateAllReportsFromCurrentData();
       }
     })
     .catch((error) => {
       console.error("Export error:", error);
+      ElMessage.warning('API error, generating report from current data');
       // Fallback: generate report from current data
       generateAllReportsFromCurrentData();
+    })
+    .finally(() => {
+      exportLoading.value = false;
     });
 }
 
 function exportIndividualReport(student_id) {
-  // Export individual student consultation report
+  individualExportLoading.value = true;
+  
   fetch(
     `http://localhost:8085/advisor_api?action=export_student_report&advisor_id=${advisor_id}&student_id=${student_id}`
   )
@@ -527,16 +611,25 @@ function exportIndividualReport(student_id) {
     .then((data) => {
       if (data.success) {
         generateIndividualReportCSV(data.data);
+        ElMessage.success('Individual report exported successfully');
       } else {
-        alert("Failed to export individual report");
+        ElMessage.error('Failed to export individual report: ' + (data.message || 'Unknown error'));
+        // Fallback: generate report from current detail data
+        if (detailData.value) {
+          generateIndividualReportFromCurrentData(detailData.value);
+        }
       }
     })
     .catch((error) => {
       console.error("Export error:", error);
+      ElMessage.warning('API error, generating report from current data');
       // Fallback: generate report from current detail data
       if (detailData.value) {
         generateIndividualReportFromCurrentData(detailData.value);
       }
+    })
+    .finally(() => {
+      individualExportLoading.value = false;
     });
 }
 
@@ -551,7 +644,7 @@ function generateAllReportsCSV(data) {
 }
 
 function generateIndividualReportCSV(data) {
-  const csvContent = generateCSVContent([data], "individual");
+  const csvContent = generateDetailedCSVContent(data);
   const studentName = data.name.replace(/[^a-zA-Z0-9]/g, "_");
   downloadCSV(
     csvContent,
@@ -570,6 +663,8 @@ function generateAllReportsFromCurrentData() {
     total_comments: 0,
     total_appointments: 0,
     last_consultation: "N/A",
+    current_cgpa: "N/A",
+    academic_status: "N/A"
   }));
 
   const csvContent = generateCSVContent(reportData, "summary");
@@ -631,6 +726,7 @@ function generateDetailedCSVContent(student) {
   rows.push(["Basic Info", "Name", student.name, "", ""]);
   rows.push(["Basic Info", "Matric No", student.matric_no, "", ""]);
   rows.push(["Basic Info", "Phone", student.phone || "N/A", "", ""]);
+  rows.push(["Basic Info", "Email", student.email || "N/A", "", ""]);
 
   // Academic records
   if (student.semesters && student.semesters.length > 0) {
@@ -678,7 +774,7 @@ function generateDetailedCSVContent(student) {
         "Meeting",
         appointment.content,
         appointment.meeting_time,
-        "",
+        `Created: ${appointment.created_at}`,
       ]);
     });
   }
@@ -702,6 +798,7 @@ function downloadCSV(csvContent, filename) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url); // Clean up
   }
 }
 
@@ -923,6 +1020,12 @@ onMounted(() => {
 .add-button {
   border-radius: 8px;
   font-weight: 500;
+}
+
+.card-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f2f5;
 }
 
 /* 空状态 */
