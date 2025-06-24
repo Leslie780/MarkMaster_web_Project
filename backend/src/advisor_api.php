@@ -5,7 +5,6 @@ $conn = getPDO();
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: *");
 
-
 function getGradePoint($score) {
     if ($score >= 90) return [ 'grade' => 'A+',  'point' => 4.00 ];
     if ($score >= 80) return [ 'grade' => 'A',   'point' => 4.00 ];
@@ -24,8 +23,324 @@ function getGradePoint($score) {
 
 $action = $_REQUEST['action'] ?? '';
 
+// NEW: Get student analytics and ranking
+if ($action === 'student_analytics') {
+    $student_id = $_GET['student_id'] ?? null;
+    $advisor_id = $_GET['advisor_id'] ?? null;
+    
+    if (!$student_id || !$advisor_id) {
+        echo json_encode(['success' => false, 'message' => 'Missing parameters']);
+        exit;
+    }
+    
+    // Verify student belongs to advisor
+    $stmt = $conn->prepare("SELECT 1 FROM advisor_students WHERE advisor_id=? AND student_id=?");
+    $stmt->execute([$advisor_id, $student_id]);
+    if (!$stmt->fetch()) {
+        echo json_encode(['success' => false, 'message' => 'Student not found']);
+        exit;
+    }
+    
+    // Get student's CGPA trend over semesters
+    $stmt = $conn->prepare("
+        SELECT DISTINCT c.academic_year, c.semester
+        FROM course_students cs
+        JOIN courses c ON cs.course_id = c.id
+        WHERE cs.student_id = ?
+        ORDER BY c.academic_year, c.semester
+    ");
+    $stmt->execute([$student_id]);
+    $semesters = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $cgpa_trend = [];
+    $semester_labels = [];
+    
+    foreach ($semesters as $sem) {
+        $semester_key = $sem['academic_year'] . ' S' . $sem['semester'];
+        $semester_labels[] = $semester_key;
+        
+        // Calculate CGPA for this semester
+        $stmt_courses = $conn->prepare("
+            SELECT c.id AS course_id, c.credit_hours
+            FROM course_students cs
+            JOIN courses c ON cs.course_id = c.id
+            WHERE cs.student_id = ? AND c.academic_year = ? AND c.semester = ?
+        ");
+        $stmt_courses->execute([$student_id, $sem['academic_year'], $sem['semester']]);
+        $courses = $stmt_courses->fetchAll(PDO::FETCH_ASSOC);
+        
+        $total_points = 0;
+        $total_credits = 0;
+        
+        foreach ($courses as $course) {
+            $course_id = $course['course_id'];
+            $credit_hours = $course['credit_hours'];
+            
+            // Get assessment total
+            $stmt_assess = $conn->prepare("
+                SELECT ac.max_mark, ac.percentage, COALESCE(ascore.mark_obtained, 0) as mark_obtained
+                FROM assessment_components ac
+                LEFT JOIN assessment_scores ascore ON ac.id = ascore.component_id AND ascore.student_id = ?
+                WHERE ac.course_id = ?
+            ");
+            $stmt_assess->execute([$student_id, $course_id]);
+            $assessments = $stmt_assess->fetchAll(PDO::FETCH_ASSOC);
+            
+            $total_assessment_score = 0;
+            foreach ($assessments as $a) {
+                if ($a['max_mark'] > 0) {
+                    $score = ($a['mark_obtained'] / $a['max_mark']) * $a['percentage'];
+                    $total_assessment_score += $score;
+                }
+            }
+            
+            // Get final exam
+            $stmt_final = $conn->prepare("SELECT mark_obtained FROM final_exam_scores WHERE student_id=? AND course_id=?");
+            $stmt_final->execute([$student_id, $course_id]);
+            $final_score = $stmt_final->fetchColumn() ?: 0;
+            
+            $total_score = $total_assessment_score + ($final_score * 0.3);
+            $gradeInfo = getGradePoint($total_score);
+            
+            $total_points += $gradeInfo['point'] * $credit_hours;
+            $total_credits += $credit_hours;
+        }
+        
+        $cgpa = $total_credits > 0 ? round($total_points / $total_credits, 2) : 0;
+        $cgpa_trend[] = $cgpa;
+    }
+    
+    // Calculate student ranking
+    $ranking_data = calculateStudentRanking($conn, $student_id);
+    
+    // Get class averages
+    $class_averages = getClassAverages($conn, $student_id);
+    
+    echo json_encode([
+        'success' => true,
+        'data' => [
+            'cgpa_trend' => $cgpa_trend,
+            'semester_labels' => $semester_labels,
+            'ranking' => $ranking_data,
+            'class_averages' => $class_averages
+        ]
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
+function calculateStudentRanking($conn, $student_id) {
+    try {
+        // Get all students from the same courses as this student
+        $stmt = $conn->prepare("
+            SELECT DISTINCT cs2.student_id
+            FROM course_students cs1
+            JOIN course_students cs2 ON cs1.course_id = cs2.course_id
+            WHERE cs1.student_id = ?
+        ");
+        $stmt->execute([$student_id]);
+        $peer_students = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'student_id');
+        
+        if (count($peer_students) <= 1) {
+            return [
+                'position' => 1,
+                'total_students' => 1,
+                'percentile' => 100
+            ];
+        }
+        
+        // Calculate CGPA for each peer student
+        $student_cgpas = [];
+        foreach ($peer_students as $peer_id) {
+            $cgpa = calculateLatestCGPA($conn, $peer_id);
+            if ($cgpa > 0) {
+                $student_cgpas[$peer_id] = $cgpa;
+            }
+        }
+        
+        if (empty($student_cgpas)) {
+            return [
+                'position' => 1,
+                'total_students' => 1,
+                'percentile' => 100
+            ];
+        }
+        
+        // Sort by CGPA descending
+        arsort($student_cgpas);
+        
+        $position = 1;
+        $rank = 1;
+        $prev_cgpa = null;
+        
+        foreach ($student_cgpas as $sid => $cgpa) {
+            if ($prev_cgpa !== null && $cgpa < $prev_cgpa) {
+                $rank = $position;
+            }
+            
+            if ($sid == $student_id) {
+                $total_students = count($student_cgpas);
+                $percentile = round((($total_students - $rank + 1) / $total_students) * 100, 1);
+                
+                return [
+                    'position' => $rank,
+                    'total_students' => $total_students,
+                    'percentile' => $percentile
+                ];
+            }
+            
+            $position++;
+            $prev_cgpa = $cgpa;
+        }
+        
+        return [
+            'position' => count($student_cgpas),
+            'total_students' => count($student_cgpas),
+            'percentile' => 1
+        ];
+        
+    } catch (Exception $e) {
+        return [
+            'position' => 'N/A',
+            'total_students' => 'N/A',
+            'percentile' => 'N/A'
+        ];
+    }
+}
 
+function calculateLatestCGPA($conn, $student_id) {
+    try {
+        // Get latest semester
+        $stmt = $conn->prepare("
+            SELECT c.academic_year, c.semester 
+            FROM course_students cs
+            JOIN courses c ON cs.course_id = c.id
+            WHERE cs.student_id = ?
+            ORDER BY c.academic_year DESC, c.semester DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$student_id]);
+        $latest_sem = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$latest_sem) return 0;
+        
+        // Calculate CGPA for latest semester
+        $stmt = $conn->prepare("
+            SELECT c.id AS course_id, c.credit_hours
+            FROM course_students cs
+            JOIN courses c ON cs.course_id = c.id
+            WHERE cs.student_id = ? AND c.academic_year = ? AND c.semester = ?
+        ");
+        $stmt->execute([$student_id, $latest_sem['academic_year'], $latest_sem['semester']]);
+        $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $total_points = 0;
+        $total_credits = 0;
+        
+        foreach ($courses as $course) {
+            // Assessment calculation (simplified)
+            $stmt_assess = $conn->prepare("
+                SELECT ac.max_mark, ac.percentage, COALESCE(ascore.mark_obtained, 0) as mark_obtained
+                FROM assessment_components ac
+                LEFT JOIN assessment_scores ascore ON ac.id = ascore.component_id AND ascore.student_id = ?
+                WHERE ac.course_id = ?
+            ");
+            $stmt_assess->execute([$student_id, $course['course_id']]);
+            $assessments = $stmt_assess->fetchAll(PDO::FETCH_ASSOC);
+            
+            $total_assessment_score = 0;
+            foreach ($assessments as $a) {
+                if ($a['max_mark'] > 0) {
+                    $score = ($a['mark_obtained'] / $a['max_mark']) * $a['percentage'];
+                    $total_assessment_score += $score;
+                }
+            }
+            
+            // Final exam
+            $stmt_final = $conn->prepare("SELECT mark_obtained FROM final_exam_scores WHERE student_id=? AND course_id=?");
+            $stmt_final->execute([$student_id, $course['course_id']]);
+            $final_score = $stmt_final->fetchColumn() ?: 0;
+            
+            $total_score = $total_assessment_score + ($final_score * 0.3);
+            $gradeInfo = getGradePoint($total_score);
+            
+            $total_points += $gradeInfo['point'] * $course['credit_hours'];
+            $total_credits += $course['credit_hours'];
+        }
+        
+        return $total_credits > 0 ? round($total_points / $total_credits, 2) : 0;
+        
+    } catch (Exception $e) {
+        return 0;
+    }
+}
+
+function getClassAverages($conn, $student_id) {
+    try {
+        // Get courses this student is enrolled in
+        $stmt = $conn->prepare("
+            SELECT DISTINCT c.id, c.course_name, c.course_code
+            FROM course_students cs
+            JOIN courses c ON cs.course_id = c.id
+            WHERE cs.student_id = ?
+        ");
+        $stmt->execute([$student_id]);
+        $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $averages = [];
+        foreach ($courses as $course) {
+            // Get all students in this course
+            $stmt_students = $conn->prepare("SELECT student_id FROM course_students WHERE course_id = ?");
+            $stmt_students->execute([$course['id']]);
+            $course_students = array_column($stmt_students->fetchAll(PDO::FETCH_ASSOC), 'student_id');
+            
+            $total_scores = [];
+            foreach ($course_students as $sid) {
+                // Calculate course score for each student
+                $stmt_assess = $conn->prepare("
+                    SELECT ac.max_mark, ac.percentage, COALESCE(ascore.mark_obtained, 0) as mark_obtained
+                    FROM assessment_components ac
+                    LEFT JOIN assessment_scores ascore ON ac.id = ascore.component_id AND ascore.student_id = ?
+                    WHERE ac.course_id = ?
+                ");
+                $stmt_assess->execute([$sid, $course['id']]);
+                $assessments = $stmt_assess->fetchAll(PDO::FETCH_ASSOC);
+                
+                $assessment_score = 0;
+                foreach ($assessments as $a) {
+                    if ($a['max_mark'] > 0) {
+                        $score = ($a['mark_obtained'] / $a['max_mark']) * $a['percentage'];
+                        $assessment_score += $score;
+                    }
+                }
+                
+                $stmt_final = $conn->prepare("SELECT mark_obtained FROM final_exam_scores WHERE student_id=? AND course_id=?");
+                $stmt_final->execute([$sid, $course['id']]);
+                $final_score = $stmt_final->fetchColumn() ?: 0;
+                
+                $total_score = $assessment_score + ($final_score * 0.3);
+                if ($total_score > 0) {
+                    $total_scores[] = $total_score;
+                }
+            }
+            
+            if (!empty($total_scores)) {
+                $averages[] = [
+                    'course_name' => $course['course_name'],
+                    'course_code' => $course['course_code'],
+                    'class_average' => round(array_sum($total_scores) / count($total_scores), 2),
+                    'student_count' => count($total_scores)
+                ];
+            }
+        }
+        
+        return $averages;
+        
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Your existing code continues here...
 if ($action === 'candidate_list') {
     $sql = "
         SELECT u.id as student_id, u.name, u.matric_no
@@ -36,8 +351,6 @@ WHERE u.role = 'student'
     ";
     $stmt = $conn->query($sql);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-
 
     $student_map = [];
     foreach ($rows as $row) {
@@ -53,8 +366,6 @@ WHERE u.role = 'student'
     exit;
 }
 
-
-
 if ($action === 'add_student') {
     $advisor_id = $_POST['advisor_id'] ?? null;
     $student_id = $_POST['student_id'] ?? null;
@@ -63,7 +374,6 @@ if ($action === 'add_student') {
         exit;
     }
    
-
     $stmt = $conn->prepare("SELECT 1 FROM advisor_students WHERE advisor_id=? AND student_id=?");
     $stmt->execute([$advisor_id, $student_id]);
     if ($stmt->fetch()) {
@@ -75,8 +385,6 @@ if ($action === 'add_student') {
     echo json_encode(['success' => true]);
     exit;
 }
-
-
 
 if ($action === 'students_detail') {
     $advisor_id = $_GET['advisor_id'] ?? null;
@@ -102,7 +410,6 @@ if ($action === 'students_detail') {
         $students_info[$row['id']] = $row;
     }
 
-
     $stmt = $conn->prepare("
         SELECT cs.student_id, c.id AS course_id, c.course_name, c.course_code, c.academic_year, c.semester, c.credit_hours
         FROM course_students cs
@@ -113,7 +420,6 @@ if ($action === 'students_detail') {
     $stmt->execute($student_ids);
     $all_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-   
     $student_semesters = [];
     foreach ($all_courses as $course) {
         $sid = $course['student_id'];
@@ -172,7 +478,6 @@ if ($action === 'students_detail') {
                 $final_score = $stmt3->fetchColumn();
                 $final_score = $final_score !== false ? floatval($final_score) : 0;
 
-             
                 $total_score = $total_assessment_score + ($final_score * 0.3);
 
                 $gradeInfo = getGradePoint($total_score);
@@ -205,8 +510,6 @@ if ($action === 'students_detail') {
             ];
         }
         
-
-
         $stmtC = $conn->prepare("
             SELECT id, type, content, meeting_time, created_at
             FROM student_advisor_activity
@@ -237,8 +540,7 @@ if ($action === 'students_detail') {
     exit;
 }
 
-
-
+// Continue with existing functions...
 if ($action === 'add_comment') {
     $advisor_id = $_POST['advisor_id'] ?? null;
     $student_id = $_POST['student_id'] ?? null;
@@ -253,8 +555,6 @@ if ($action === 'add_comment') {
     exit;
 }
 
-
-
 if ($action === 'delete_comment') {
     $comment_id = $_POST['comment_id'] ?? null;
     $advisor_id = $_POST['advisor_id'] ?? null;
@@ -267,8 +567,6 @@ if ($action === 'delete_comment') {
     echo json_encode(['success' => true]);
     exit;
 }
-
-
 
 if ($action === 'add_meeting') {
     $advisor_id = $_POST['advisor_id'] ?? null;
@@ -285,8 +583,6 @@ if ($action === 'add_meeting') {
     exit;
 }
 
-
-
 if ($action === 'delete_meeting') {
     $meeting_id = $_POST['meeting_id'] ?? null;
     $advisor_id = $_POST['advisor_id'] ?? null;
@@ -299,8 +595,6 @@ if ($action === 'delete_meeting') {
     echo json_encode(['success' => true]);
     exit;
 }
-
-
 
 if ($action === 'remove_student') {
     $advisor_id = $_POST['advisor_id'] ?? null;
@@ -324,7 +618,7 @@ if ($action === 'remove_student') {
     exit;
 }
 
-// NEW: Export all reports for an advisor
+// Existing export functions remain unchanged...
 if ($action === 'export_all_reports') {
     $advisor_id = $_GET['advisor_id'] ?? null;
     if (!$advisor_id) {
@@ -332,7 +626,6 @@ if ($action === 'export_all_reports') {
         exit;
     }
     
-    // Get all students for this advisor with summary data
     $stmt = $conn->prepare("SELECT student_id FROM advisor_students WHERE advisor_id=?");
     $stmt->execute([$advisor_id]);
     $student_ids = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'student_id');
@@ -344,7 +637,6 @@ if ($action === 'export_all_reports') {
 
     $in_query = implode(',', array_fill(0, count($student_ids), '?'));
     
-    // Get basic student info
     $stmt = $conn->prepare("SELECT id, name, matric_no, email, phone FROM users WHERE id IN ($in_query)");
     $stmt->execute($student_ids);
     $students_info = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -353,89 +645,22 @@ if ($action === 'export_all_reports') {
     foreach ($students_info as $student) {
         $sid = $student['id'];
         
-        // Get comment count
         $stmt_comments = $conn->prepare("SELECT COUNT(*) as count FROM student_advisor_activity WHERE student_id=? AND advisor_id=? AND type='comment'");
         $stmt_comments->execute([$sid, $advisor_id]);
         $comment_count = $stmt_comments->fetchColumn();
         
-        // Get appointment count
         $stmt_meetings = $conn->prepare("SELECT COUNT(*) as count FROM student_advisor_activity WHERE student_id=? AND advisor_id=? AND type='meeting'");
         $stmt_meetings->execute([$sid, $advisor_id]);
         $meeting_count = $stmt_meetings->fetchColumn();
         
-        // Get last consultation
         $stmt_last = $conn->prepare("SELECT created_at FROM student_advisor_activity WHERE student_id=? AND advisor_id=? ORDER BY created_at DESC LIMIT 1");
         $stmt_last->execute([$sid, $advisor_id]);
         $last_consultation = $stmt_last->fetchColumn() ?: 'N/A';
         
-        // Get latest CGPA (simplified - get from most recent semester)
-        $stmt_cgpa = $conn->prepare("
-            SELECT c.academic_year, c.semester 
-            FROM course_students cs
-            JOIN courses c ON cs.course_id = c.id
-            WHERE cs.student_id = ?
-            ORDER BY c.academic_year DESC, c.semester DESC
-            LIMIT 1
-        ");
-        $stmt_cgpa->execute([$sid]);
-        $latest_semester = $stmt_cgpa->fetch(PDO::FETCH_ASSOC);
+        $current_cgpa = calculateLatestCGPA($conn, $sid);
+        $academic_status = $current_cgpa <= 2.0 ? 'high-risk' : 'active';
         
-        $current_cgpa = 'N/A';
-        $academic_status = 'N/A';
-        
-        if ($latest_semester) {
-            // Calculate CGPA for latest semester (simplified calculation)
-            $stmt_courses = $conn->prepare("
-                SELECT c.id AS course_id, c.credit_hours
-                FROM course_students cs
-                JOIN courses c ON cs.course_id = c.id
-                WHERE cs.student_id = ? AND c.academic_year = ? AND c.semester = ?
-            ");
-            $stmt_courses->execute([$sid, $latest_semester['academic_year'], $latest_semester['semester']]);
-            $courses = $stmt_courses->fetchAll(PDO::FETCH_ASSOC);
-            
-            $total_points = 0;
-            $total_credits = 0;
-            
-            foreach ($courses as $course) {
-                $course_id = $course['course_id'];
-                $credit_hours = $course['credit_hours'];
-                
-                // Get assessment scores
-                $stmt_assess = $conn->prepare("
-                    SELECT ac.max_mark, ac.percentage, COALESCE(ascore.mark_obtained, 0) as mark_obtained
-                    FROM assessment_components ac
-                    LEFT JOIN assessment_scores ascore ON ac.id = ascore.component_id AND ascore.student_id = ?
-                    WHERE ac.course_id = ?
-                ");
-                $stmt_assess->execute([$sid, $course_id]);
-                $assessments = $stmt_assess->fetchAll(PDO::FETCH_ASSOC);
-                
-                $total_assessment_score = 0;
-                foreach ($assessments as $a) {
-                    if ($a['max_mark'] > 0) {
-                        $score = ($a['mark_obtained'] / $a['max_mark']) * $a['percentage'];
-                        $total_assessment_score += $score;
-                    }
-                }
-                
-                // Get final exam score
-                $stmt_final = $conn->prepare("SELECT mark_obtained FROM final_exam_scores WHERE student_id=? AND course_id=?");
-                $stmt_final->execute([$sid, $course_id]);
-                $final_score = $stmt_final->fetchColumn() ?: 0;
-                
-                $total_score = $total_assessment_score + ($final_score * 0.3);
-                $gradeInfo = getGradePoint($total_score);
-                
-                $total_points += $gradeInfo['point'] * $credit_hours;
-                $total_credits += $credit_hours;
-            }
-            
-            if ($total_credits > 0) {
-                $current_cgpa = round($total_points / $total_credits, 2);
-                $academic_status = $current_cgpa <= 2.0 ? 'high-risk' : 'active';
-            }
-        }
+        $ranking_data = calculateStudentRanking($conn, $sid);
         
         $export_data[] = [
             'name' => $student['name'],
@@ -444,7 +669,9 @@ if ($action === 'export_all_reports') {
             'total_appointments' => $meeting_count,
             'last_consultation' => $last_consultation,
             'current_cgpa' => $current_cgpa,
-            'academic_status' => $academic_status
+            'academic_status' => $academic_status,
+            'ranking' => $ranking_data['position'] . '/' . $ranking_data['total_students'],
+            'percentile' => $ranking_data['percentile'] . '%'
         ];
     }
     
@@ -452,7 +679,6 @@ if ($action === 'export_all_reports') {
     exit;
 }
 
-// NEW: Export individual student report
 if ($action === 'export_student_report') {
     $advisor_id = $_GET['advisor_id'] ?? null;
     $student_id = $_GET['student_id'] ?? null;
@@ -462,7 +688,6 @@ if ($action === 'export_student_report') {
         exit;
     }
     
-    // Check if student belongs to this advisor
     $stmt = $conn->prepare("SELECT 1 FROM advisor_students WHERE advisor_id=? AND student_id=?");
     $stmt->execute([$advisor_id, $student_id]);
     if (!$stmt->fetch()) {
@@ -470,7 +695,6 @@ if ($action === 'export_student_report') {
         exit;
     }
     
-    // Reuse the existing students_detail logic but for single student
     $stmt = $conn->prepare("SELECT id, name, matric_no, email, phone FROM users WHERE id = ?");
     $stmt->execute([$student_id]);
     $student_info = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -480,7 +704,6 @@ if ($action === 'export_student_report') {
         exit;
     }
     
-    // Get courses and academic data
     $stmt = $conn->prepare("
         SELECT c.id AS course_id, c.course_name, c.course_code, c.academic_year, c.semester, c.credit_hours
         FROM course_students cs
@@ -491,7 +714,6 @@ if ($action === 'export_student_report') {
     $stmt->execute([$student_id]);
     $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Group by semester
     $semesters = [];
     foreach ($courses as $course) {
         $key = $course['academic_year'].'|'.$course['semester'];
@@ -510,7 +732,6 @@ if ($action === 'export_student_report') {
             $course_id = $course['course_id'];
             $credit_hours = $course['credit_hours'];
             
-            // Get assessment scores
             $stmt2 = $conn->prepare("
                 SELECT ac.max_mark, ac.percentage, COALESCE(ascore.mark_obtained, 0) as mark_obtained
                 FROM assessment_components ac
@@ -528,7 +749,6 @@ if ($action === 'export_student_report') {
                 }
             }
             
-            // Get final exam score
             $stmt3 = $conn->prepare("SELECT mark_obtained FROM final_exam_scores WHERE student_id=? AND course_id=?");
             $stmt3->execute([$student_id, $course_id]);
             $final_score = $stmt3->fetchColumn() ?: 0;
@@ -562,7 +782,6 @@ if ($action === 'export_student_report') {
         ];
     }
     
-    // Get advisor activities
     $stmt = $conn->prepare("
         SELECT id, type, content, meeting_time, created_at
         FROM student_advisor_activity
@@ -605,6 +824,5 @@ if ($action === 'export_student_report') {
     echo json_encode(['success' => true, 'data' => $export_data], JSON_UNESCAPED_UNICODE);
     exit;
 }
-
 
 echo json_encode(['success' => false, 'message' => 'error action'], JSON_UNESCAPED_UNICODE);

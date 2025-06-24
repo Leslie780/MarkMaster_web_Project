@@ -1,6 +1,5 @@
 <template>
   <div class="advisor-dashboard">
-    <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-content">
         <div class="title-section">
@@ -36,13 +35,12 @@
             :loading="exportLoading"
           >
             <el-icon><Download /></el-icon>
-            Export Reports
+            Export All Reports
           </el-button>
         </div>
       </div>
     </div>
 
-    <!-- 候选学生列表 -->
     <div class="components-section">
       <div class="component-card">
         <div class="card-header">
@@ -80,7 +78,6 @@
         </div>
       </div>
 
-      <!-- 我的学生列表 -->
       <div class="component-card">
         <div class="card-header">
           <div class="component-info">
@@ -115,7 +112,6 @@
       </div>
     </div>
 
-    <!-- 学生详情 -->
     <div v-if="detailData" class="components-section">
       <div class="component-card">
         <div class="card-header">
@@ -127,7 +123,6 @@
           </div>
         </div>
         <div class="card-content">
-          <!-- 基本信息 -->
           <div class="component-details">
             <div class="detail-item">
               <el-icon class="detail-icon"><User /></el-icon>
@@ -146,7 +141,86 @@
             </div>
           </div>
 
-          <!-- 学期成绩 -->
+          <div class="scores-preview analytics-section">
+            <div class="scores-header">
+              <h4 class="scores-title">
+                <el-icon class="detail-icon"><TrendCharts /></el-icon>
+                📊 Performance Analytics
+              </h4>
+              <el-button
+                v-if="detailData"
+                size="small"
+                type="primary"
+                @click="fetchStudentAnalytics(detailData.student_id)"
+                :loading="analyticsLoading"
+              >
+                Refresh Analytics
+              </el-button>
+            </div>
+            
+            <div v-if="analyticsLoading" class="analytics-loading">
+              <el-icon class="is-loading"><Loading /></el-icon>
+              <span>Loading analytics data...</span>
+            </div>
+            
+            <div v-else-if="analyticsData" class="analytics-grid">
+              <div class="analytics-card ranking-card">
+                <h5>🏆 Class Ranking</h5>
+                <div class="ranking-info">
+                  <div class="rank-number">{{ analyticsData.ranking?.position || 'N/A' }}</div>
+                  <div class="rank-total">/ {{ analyticsData.ranking?.total_students || 'N/A' }}</div>
+                </div>
+                <div class="percentile">{{ analyticsData.ranking?.percentile || 'N/A' }}% Percentile</div>
+              </div>
+              
+              <div class="analytics-card cgpa-card">
+                <h5>📈 CGPA Trend</h5>
+                <div class="cgpa-chart-container">
+                  <canvas ref="cgpaChart" width="300" height="150"></canvas>
+                </div>
+                <div v-if="!analyticsData.cgpa_trend?.length" class="no-chart-data">
+                  No CGPA data available
+                </div>
+              </div>
+              
+              <div class="analytics-card average-card">
+                <h5>📊 Class Averages</h5>
+                <div class="averages-list">
+                  <div v-for="avg in analyticsData.class_averages" :key="avg.course_code" class="average-item">
+                    <span class="course-code">{{ avg.course_code }}</span>
+                    <span class="average-score">{{ avg.class_average }}%</span>
+                  </div>
+                  <div v-if="!analyticsData.class_averages?.length" class="no-data">No class averages available</div>
+                </div>
+              </div>
+            </div>
+            
+            <div v-else class="analytics-no-data">
+              <div class="no-data-content">
+                <el-icon class="no-data-icon"><Warning /></el-icon>
+                <h6>No Analytics Data Available</h6>
+                <p>Analytics data may not be available for this student or there might be an API issue.</p>
+                <div class="no-data-actions">
+                  <el-button
+                    type="primary"
+                    size="small"
+                    @click="fetchStudentAnalytics(detailData.student_id)"
+                    style="margin-right: 8px;"
+                  >
+                    Try Loading Analytics
+                  </el-button>
+                  <el-button
+                    type="warning"
+                    size="small"
+                    @click="loadMockAnalytics"
+                  >
+                    Load Demo Data
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div
             v-if="detailData.semesters && detailData.semesters.length"
             class="scores-preview"
@@ -202,7 +276,6 @@
             </el-table>
           </div>
 
-          <!-- 导师评论 -->
           <div class="scores-preview">
             <div class="scores-header">
               <h4 class="scores-title">
@@ -246,7 +319,6 @@
             </div>
           </div>
 
-          <!-- 预约历史 -->
           <div class="scores-preview" style="margin-top: 24px">
             <div class="scores-header">
               <h4 class="scores-title">
@@ -304,23 +376,31 @@
             </div>
           </div>
 
-          <!-- Export Individual Report -->
           <div class="card-footer">
-            <el-button
-              type="success"
-              @click="exportIndividualReport(detailData.student_id)"
-              style="width: 100%"
-              :loading="individualExportLoading"
-            >
-              <el-icon><Download /></el-icon>
-              Export Individual Consultation Report
-            </el-button>
+            <div class="export-actions">
+              <el-button
+                type="success"
+                @click="exportIndividualReport(detailData.student_id)"
+                :loading="individualExportLoading"
+                style="margin-right: 12px"
+              >
+                <el-icon><Download /></el-icon>
+                Export Individual Report
+              </el-button>
+              <el-button
+                type="primary"
+                @click="exportMarksCSV()"
+                :loading="csvExportLoading"
+              >
+                <el-icon><Document /></el-icon>
+                Export Marks as CSV
+              </el-button>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 空状态提示 -->
     <div v-if="!detailData" class="empty-state">
       <div class="select-course-prompt">
         <el-icon class="prompt-icon"><Select /></el-icon>
@@ -331,7 +411,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, nextTick } from "vue";
 import {
   User,
   UserFilled,
@@ -341,6 +421,9 @@ import {
   Calendar,
   Select,
   Download,
+  TrendCharts,
+  Loading,
+  Warning,
 } from "@element-plus/icons-vue";
 import { ElMessage } from 'element-plus';
 
@@ -350,12 +433,54 @@ const advisor_id = user.id;
 const candidateStudents = ref([]);
 const myStudents = ref([]);
 const detailData = ref(null);
+const analyticsData = ref(null);
+const analyticsLoading = ref(false);
 const exportLoading = ref(false);
 const individualExportLoading = ref(false);
+const csvExportLoading = ref(false);
 
 const commentInput = ref("");
 const meetingInput = ref("");
 const meetingTimeInput = ref("");
+
+let cgpaChart = null;
+
+// Load Chart.js dynamically
+const loadChartJS = () => {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && window.Chart) {
+      resolve(window.Chart);
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js';
+    script.onload = () => {
+      resolve(window.Chart);
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+};
+
+// Generate mock analytics data for demonstration
+function generateMockAnalytics() {
+  return {
+    ranking: {
+      position: Math.floor(Math.random() * 50) + 1,
+      total_students: 150,
+      percentile: Math.floor(Math.random() * 40) + 60
+    },
+    cgpa_trend: [2.8, 3.1, 3.4, 3.2, 3.6, 3.5],
+    semester_labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+    class_averages: [
+      { course_code: 'CS101', class_average: 78.5 },
+      { course_code: 'CS102', class_average: 82.3 },
+      { course_code: 'MATH201', class_average: 75.8 },
+      { course_code: 'ENG101', class_average: 85.2 }
+    ]
+  };
+}
 
 function fetchCandidateStudents() {
   fetch("http://localhost:8085/advisor_api?action=candidate_list")
@@ -389,6 +514,122 @@ function fetchMyStudents() {
     });
 }
 
+// Fetch analytics data
+function fetchStudentAnalytics(student_id) {
+  analyticsLoading.value = true;
+  analyticsData.value = null; // Clear previous data
+  
+  fetch(
+    `http://localhost:8085/advisor_api?action=student_analytics&advisor_id=${advisor_id}&student_id=${student_id}`
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success) {
+        analyticsData.value = data.data;
+        nextTick(() => {
+          createCGPAChart();
+        });
+      } else {
+        console.error('Analytics API returned error:', data.message);
+        analyticsData.value = null;
+      }
+    })
+    .catch((error) => {
+      console.error('Error fetching analytics:', error);
+      analyticsData.value = null;
+    })
+    .finally(() => {
+      analyticsLoading.value = false;
+    });
+}
+
+// Load mock analytics data for demonstration
+function loadMockAnalytics() {
+  analyticsLoading.value = true;
+  
+  // Simulate loading delay
+  setTimeout(() => {
+    analyticsData.value = generateMockAnalytics();
+    nextTick(() => {
+      createCGPAChart();
+    });
+    analyticsLoading.value = false;
+    ElMessage.success('Demo analytics data loaded successfully');
+  }, 1000);
+}
+
+// Create CGPA trend chart
+async function createCGPAChart() {
+  if (!analyticsData.value || !analyticsData.value.cgpa_trend) return;
+  
+  try {
+    const Chart = await loadChartJS();
+    
+    const canvas = document.querySelector('canvas[ref="cgpaChart"]');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart
+    if (cgpaChart) {
+      cgpaChart.destroy();
+    }
+    
+    cgpaChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: analyticsData.value.semester_labels || [],
+        datasets: [{
+          label: 'CGPA',
+          data: analyticsData.value.cgpa_trend || [],
+          borderColor: '#409EFF',
+          backgroundColor: 'rgba(64, 158, 255, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: '#409EFF',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 4.0,
+            grid: {
+              color: 'rgba(0,0,0,0.1)'
+            },
+            ticks: {
+              stepSize: 0.5
+            }
+          },
+          x: {
+            grid: {
+              color: 'rgba(0,0,0,0.1)'
+            }
+          }
+        },
+        elements: {
+          point: {
+            hoverRadius: 8
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error loading Chart.js:', error);
+  }
+}
+
 function addStudent(student_id) {
   fetch("http://localhost:8085/advisor_api?action=add_student", {
     method: "POST",
@@ -399,7 +640,7 @@ function addStudent(student_id) {
     .then((data) => {
       if (data.success) {
         fetchMyStudents();
-        fetchCandidateStudents(); // Refresh candidates list
+        fetchCandidateStudents();
         ElMessage.success('Student added successfully');
       } else {
         ElMessage.error(data.message || 'Failed to add student');
@@ -421,9 +662,11 @@ function removeStudent(student_id) {
     .then((data) => {
       if (data.success) {
         fetchMyStudents();
-        fetchCandidateStudents(); // Refresh candidates list
-        if (detailData.value && detailData.value.student_id === student_id)
+        fetchCandidateStudents();
+        if (detailData.value && detailData.value.student_id === student_id) {
           detailData.value = null;
+          analyticsData.value = null;
+        }
         ElMessage.success('Student removed successfully');
       } else {
         ElMessage.error(data.message || 'Failed to remove student');
@@ -443,7 +686,11 @@ function showDetails(student_id) {
     .then((data) => {
       if (data.success && Array.isArray(data.data)) {
         const found = data.data.find((stu) => stu.student_id === student_id);
-        if (found) detailData.value = found;
+        if (found) {
+          detailData.value = found;
+          // Fetch analytics data
+          fetchStudentAnalytics(student_id);
+        }
       }
     })
     .catch((error) => {
@@ -481,12 +728,12 @@ function addComment() {
     });
 }
 
-function deleteComment(comment_id) {
+function deleteComment(commentId) {
   if (!detailData.value) return;
   fetch("http://localhost:8085/advisor_api?action=delete_comment", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `advisor_id=${advisor_id}&comment_id=${comment_id}`,
+    body: `advisor_id=${advisor_id}&comment_id=${commentId}`,
   })
     .then((res) => res.json())
     .then((data) => {
@@ -550,12 +797,12 @@ function addMeeting() {
     });
 }
 
-function deleteMeeting(meeting_id) {
+function deleteMeeting(meetingId) {
   if (!detailData.value) return;
   fetch("http://localhost:8085/advisor_api?action=delete_meeting", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `advisor_id=${advisor_id}&meeting_id=${meeting_id}`,
+    body: `advisor_id=${advisor_id}&meeting_id=${meetingId}`,
   })
     .then((res) => res.json())
     .then((data) => {
@@ -586,14 +833,12 @@ function exportReports() {
         ElMessage.success('Reports exported successfully');
       } else {
         ElMessage.error('Failed to export reports: ' + (data.message || 'Unknown error'));
-        // Fallback: generate report from current data
         generateAllReportsFromCurrentData();
       }
     })
     .catch((error) => {
       console.error("Export error:", error);
       ElMessage.warning('API error, generating report from current data');
-      // Fallback: generate report from current data
       generateAllReportsFromCurrentData();
     })
     .finally(() => {
@@ -614,7 +859,6 @@ function exportIndividualReport(student_id) {
         ElMessage.success('Individual report exported successfully');
       } else {
         ElMessage.error('Failed to export individual report: ' + (data.message || 'Unknown error'));
-        // Fallback: generate report from current detail data
         if (detailData.value) {
           generateIndividualReportFromCurrentData(detailData.value);
         }
@@ -623,7 +867,6 @@ function exportIndividualReport(student_id) {
     .catch((error) => {
       console.error("Export error:", error);
       ElMessage.warning('API error, generating report from current data');
-      // Fallback: generate report from current detail data
       if (detailData.value) {
         generateIndividualReportFromCurrentData(detailData.value);
       }
@@ -631,6 +874,74 @@ function exportIndividualReport(student_id) {
     .finally(() => {
       individualExportLoading.value = false;
     });
+}
+
+// Export marks as CSV -
+// **FIXED**: Removed unused student_id parameter
+function exportMarksCSV() {
+  csvExportLoading.value = true;
+  
+  if (!detailData.value) {
+    ElMessage.error('No student data available');
+    csvExportLoading.value = false;
+    return;
+  }
+  
+  try {
+    const csvContent = generateMarksCSV(detailData.value);
+    const studentName = detailData.value.name.replace(/[^a-zA-Z0-9]/g, "_");
+    downloadCSV(
+      csvContent,
+      `${studentName}_Marks_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    ElMessage.success('Marks exported as CSV successfully');
+  } catch (error) {
+    console.error('Error exporting marks CSV:', error);
+    ElMessage.error('Failed to export marks as CSV');
+  } finally {
+    csvExportLoading.value = false;
+  }
+}
+
+// Generate marks-only CSV
+function generateMarksCSV(student) {
+  const headers = [
+    "Academic Year",
+    "Semester",
+    "Course Code",
+    "Course Name",
+    "Credit Hours",
+    "Total Score",
+    "Grade",
+    "Grade Point"
+  ];
+  
+  const rows = [];
+  
+  if (student.semesters && student.semesters.length > 0) {
+    student.semesters.forEach(semester => {
+      if (semester.courses && semester.courses.length > 0) {
+        semester.courses.forEach(course => {
+          rows.push([
+            semester.academic_year,
+            semester.semester,
+            course.course_code,
+            course.course_name,
+            course.credit_hours,
+            course.total_score,
+            course.grade,
+            course.grade_point
+          ]);
+        });
+      }
+    });
+  }
+  
+  return [headers, ...rows]
+    .map(row => 
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    )
+    .join("\n");
 }
 
 function generateAllReportsCSV(data) {
@@ -655,7 +966,6 @@ function generateIndividualReportCSV(data) {
 }
 
 function generateAllReportsFromCurrentData() {
-  // Fallback function using current myStudents data
   const reportData = myStudents.value.map((student) => ({
     name: student.name,
     matric_no: student.matric_no,
@@ -664,7 +974,9 @@ function generateAllReportsFromCurrentData() {
     total_appointments: 0,
     last_consultation: "N/A",
     current_cgpa: "N/A",
-    academic_status: "N/A"
+    academic_status: "N/A",
+    ranking: "N/A",
+    percentile: "N/A"
   }));
 
   const csvContent = generateCSVContent(reportData, "summary");
@@ -698,6 +1010,8 @@ function generateCSVContent(data, type) {
       "Last Consultation",
       "Current CGPA",
       "Academic Status",
+      "Ranking",
+      "Percentile"
     ];
 
     rows = data.map((student) => [
@@ -708,6 +1022,8 @@ function generateCSVContent(data, type) {
       student.last_consultation || "N/A",
       student.current_cgpa || "N/A",
       student.academic_status || "N/A",
+      student.ranking || "N/A",
+      student.percentile || "N/A"
     ]);
   }
 
@@ -798,7 +1114,7 @@ function downloadCSV(csvContent, filename) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url); // Clean up
+    URL.revokeObjectURL(url);
   }
 }
 
@@ -893,6 +1209,170 @@ onMounted(() => {
   font-size: 14px;
   opacity: 0.9;
 }
+
+/* --- START: UPDATED ANALYTICS CSS --- */
+.analytics-section {
+  background: #f8f9fa; /* Changed background for better contrast */
+  color: #333; /* Default dark text color */
+  border-radius: 16px;
+  margin-bottom: 24px;
+  border: 1px solid #e9ecef; /* Added a subtle border */
+}
+
+.analytics-section .scores-title {
+  color: #2c3e50; /* Dark color for the section title */
+  font-size: 16px; /* Adjusted font size */
+}
+
+.analytics-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #555; /* Darker loading text */
+  font-size: 16px;
+}
+
+.analytics-loading .el-icon {
+  font-size: 20px;
+}
+
+.analytics-no-data {
+  padding: 40px 20px;
+}
+
+.no-data-content {
+  text-align: center;
+  color: #555; /* Darker text for no-data message */
+}
+
+.no-data-icon {
+  font-size: 48px;
+  color: #ccc; /* Lighter icon color */
+  margin-bottom: 16px;
+}
+
+.no-data-content h6 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50; /* Dark heading */
+}
+
+.no-data-content p {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  color: #7f8c8d; /* Subdued text color */
+}
+
+.no-data-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.analytics-card {
+  background: white; /* Solid white background */
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #f0f2f5;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.analytics-card h5 {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #7f8c8d; /* Subdued title color */
+  text-transform: uppercase;
+}
+
+.ranking-card {
+  text-align: center;
+}
+
+.ranking-info {
+  display: flex;
+  align-items: baseline; /* Align baseline for better appearance */
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.rank-number {
+  font-size: 36px;
+  font-weight: 700;
+  color: #409EFF; /* Use primary color for emphasis */
+}
+
+.rank-total {
+  font-size: 20px;
+  color: #95a5a6; /* Lighter color for the total */
+}
+
+.percentile {
+  font-size: 14px;
+  color: #2c3e50; /* Dark text */
+  font-weight: 500;
+}
+
+.cgpa-chart-container {
+  height: 120px;
+  position: relative;
+}
+
+.no-chart-data {
+  text-align: center;
+  color: #95a5a6; /* Subdued text */
+  font-size: 14px;
+  padding: 20px;
+}
+
+.averages-list {
+  max-height: 120px; /* Increased height */
+  overflow-y: auto;
+}
+
+.average-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0; /* Adjusted padding */
+  border-bottom: 1px solid #f0f2f5; /* Lighter border */
+}
+
+.average-item:last-child {
+  border-bottom: none;
+}
+
+.course-code {
+  font-weight: 600;
+  font-size: 12px;
+  color: #34495e; /* Darker course code */
+}
+
+.average-score {
+  font-weight: 500;
+  font-size: 12px;
+  color: #409EFF; /* Use primary color for score */
+}
+
+.no-data {
+  text-align: center;
+  color: #95a5a6;
+  font-size: 12px;
+  padding: 8px 0;
+}
+/* --- END: UPDATED ANALYTICS CSS --- */
 
 /* 组件网格 */
 .components-section {
@@ -1028,6 +1508,12 @@ onMounted(() => {
   border-top: 1px solid #f0f2f5;
 }
 
+.export-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* 空状态 */
 .empty-state {
   margin-top: 60px;
@@ -1046,6 +1532,12 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
+@media (max-width: 992px) {
+  .analytics-grid {
+    grid-template-columns: 1fr; /* Stack cards on smaller screens */
+  }
+}
+
 @media (max-width: 768px) {
   .advisor-dashboard {
     padding: 16px;
@@ -1059,6 +1551,10 @@ onMounted(() => {
 
   .header-stats {
     justify-content: center;
+  }
+  
+  .export-actions {
+    flex-direction: column;
   }
 }
 </style>
