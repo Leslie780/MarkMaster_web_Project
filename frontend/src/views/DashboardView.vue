@@ -9,20 +9,7 @@
           <div class="user-info">
             <el-tag :type="roleTagType" size="large">{{ userRole.toUpperCase() }}</el-tag>
             <span class="user-name">{{ userName }}</span>
-            <!-- Debug Panel (Development Only) -->
-    <el-card class="debug-card" v-if="showDebug">
-      <h3>🐛 Debug Panel (Development)</h3>
-      <p><strong>Current Role:</strong> {{ userRole }}</p>
-      <p><strong>Current User:</strong> {{ userName }}</p>
-      <div class="debug-buttons">
-        <el-button size="small" @click="switchRole('lecturer')">Switch to Lecturer</el-button>
-        <el-button size="small" @click="switchRole('student')">Switch to Student</el-button>
-        <el-button size="small" @click="switchRole('advisor')">Switch to Advisor</el-button>
-        <el-button size="small" @click="switchRole('admin')">Switch to Admin</el-button>
-      </div>
-      <el-button size="small" type="danger" @click="clearStorage">Clear Storage</el-button>
-    </el-card>
-  </div>
+          </div>
         </div>
         <div class="welcome-icon">{{ roleIcon }}</div>
       </div>
@@ -141,17 +128,17 @@
         <el-card class="feature-card">
           <h3>🎯 Student Tools</h3>
           <div class="features-grid">
-            <div class="feature-item" @click="navigateTo('/student-courses')">
+            <div class="feature-item" @click="navigateTo('/student-dashboard')">
               <el-icon size="30"><Document /></el-icon>
-              <h4>My Courses</h4>
-              <p>View enrolled courses and marks</p>
+              <h4>My Grades</h4>
+              <p>View results and performance</p>
             </div>
             <div class="feature-item" @click="navigateTo('/cgpa-calculator')">
               <el-icon size="30"><Calculator /></el-icon>
               <h4>CGPA Calculator</h4>
               <p>Calculate and track your CGPA</p>
             </div>
-            <div class="feature-item" @click="navigateTo('/compare-performance')">
+            <div class="feature-item" @click="navigateTo('/student-dashboard')">
               <el-icon size="30"><TrendCharts /></el-icon>
               <h4>Compare Performance</h4>
               <p>Compare with classmates</p>
@@ -202,12 +189,12 @@
               <h4>Manage Advisees</h4>
               <p>Monitor student progress</p>
             </div>
-            <div class="feature-item" @click="navigateTo('/advisor-reports')">
+            <div class="feature-item" @click="navigateTo('/advisor-dashboard')">
               <el-icon size="30"><Document /></el-icon>
               <h4>Generate Reports</h4>
               <p>Create consultation reports</p>
             </div>
-            <div class="feature-item" @click="navigateTo('/at-risk-students')">
+            <div class="feature-item" @click="navigateTo('/advisor-dashboard')">
               <el-icon size="30"><Warning /></el-icon>
               <h4>At-Risk Students</h4>
               <p>Identify struggling students</p>
@@ -287,6 +274,20 @@
         </el-timeline-item>
       </el-timeline>
     </el-card>
+
+    <!-- Debug Panel (Development Only) -->
+    <el-card class="debug-card" v-if="showDebug">
+      <h3>🐛 Debug Panel (Development)</h3>
+      <p><strong>Current Role:</strong> {{ userRole }}</p>
+      <p><strong>Current User:</strong> {{ userName }}</p>
+      <div class="debug-buttons">
+        <el-button size="small" @click="switchRole('lecturer')">Switch to Lecturer</el-button>
+        <el-button size="small" @click="switchRole('student')">Switch to Student</el-button>
+        <el-button size="small" @click="switchRole('advisor')">Switch to Advisor</el-button>
+        <el-button size="small" @click="switchRole('admin')">Switch to Admin</el-button>
+      </div>
+      <el-button size="small" type="danger" @click="clearStorage">Clear Storage & Logout</el-button>
+    </el-card>
   </div>
 </template>
 
@@ -301,34 +302,28 @@ import {
   Calculator, 
   User, 
   Warning, 
-  Monitor 
+  Monitor,
+  View
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
 
-// User data (get from localStorage/store)
-const userRole = ref(localStorage.getItem('role') || localStorage.getItem('userRole') || 'student')
-const userName = ref(localStorage.getItem('name') || localStorage.getItem('userName') || 'User')
-
-// Debug: Check what's in localStorage
-console.log('Dashboard Debug - Role from localStorage:', localStorage.getItem('role'))
-console.log('Dashboard Debug - All localStorage items:', Object.keys(localStorage).map(key => ({
-  key: key,
-  value: localStorage.getItem(key)
-})))
-
-// Stats data
+// --- Reactive State ---
+const userRole = ref('student') // Default role
+const userName = ref('Guest')
 const stats = ref({})
 const recentActivities = ref([])
-const showDebug = ref(process.env.NODE_ENV === 'development') // Show debug panel in development
+// Show debug panel only in development mode
+// FIXED: Changed from import.meta.env.DEV to a more compatible alternative
+const showDebug = ref(process.env.NODE_ENV === 'development')
 
-// Computed properties
+// --- Computed Properties for Dynamic UI ---
 const welcomeMessage = computed(() => {
   const messages = {
     lecturer: `Welcome back, ${userName.value}!`,
     student: `Hello, ${userName.value}!`,
     advisor: `Good day, ${userName.value}!`,
-    admin: `Welcome, Administrator ${userName.value}!`
+    admin: `Welcome, Administrator!`
   }
   return messages[userRole.value] || 'Welcome!'
 })
@@ -343,57 +338,39 @@ const roleDescription = computed(() => {
   return descriptions[userRole.value] || 'Welcome to the Course Marking System'
 })
 
-const roleIcon = computed(() => {
-  const icons = {
-    lecturer: '👨‍🏫',
-    student: '🎓',
-    advisor: '🛡️',
-    admin: '⚙️'
-  }
-  return icons[userRole.value] || '👤'
-})
+const roleIcon = computed(() => ({
+  lecturer: '👨‍🏫', student: '🎓', advisor: '🛡️', admin: '⚙️'
+}[userRole.value] || '👤'))
 
-const roleClass = computed(() => {
-  return `welcome-${userRole.value}`
-})
+const roleClass = computed(() => `welcome-${userRole.value}`)
 
-const roleTagType = computed(() => {
-  const types = {
-    lecturer: 'primary',
-    student: 'success',
-    advisor: 'warning',
-    admin: 'danger'
-  }
-  return types[userRole.value] || 'info'
-})
+const roleTagType = computed(() => ({
+  lecturer: 'primary', student: 'success', advisor: 'warning', admin: 'danger'
+}[userRole.value] || 'info'))
 
 const quickActions = computed(() => {
   const actions = {
     lecturer: [
-      { id: 1, label: 'Add Assessment', type: 'primary', icon: 'Plus', route: '/ca-components' },
-      { id: 2, label: 'View Results', type: 'success', icon: 'View', route: '/lecturer-results' },
-      { id: 3, label: 'Export Data', type: 'info', icon: 'Download', route: '/export' }
+      { id: 1, label: 'Add Assessment', type: 'primary', icon: EditPen, route: '/ca-components' },
+      { id: 2, label: 'View Results', type: 'success', icon: View, route: '/lecturer-results' },
     ],
     student: [
-      { id: 1, label: 'View Grades', type: 'primary', icon: 'View', route: '/student-courses' },
-      { id: 2, label: 'Calculate CGPA', type: 'success', icon: 'Calculator', route: '/cgpa-calculator' },
-      { id: 3, label: 'Compare Performance', type: 'warning', icon: 'TrendCharts', route: '/compare-performance' }
+      { id: 1, label: 'View My Grades', type: 'primary', icon: View, route: '/student-dashboard' },
+      { id: 2, label: 'Calculate CGPA', type: 'success', icon: Calculator, route: '/cgpa-calculator' },
     ],
     advisor: [
-      { id: 1, label: 'View Advisees', type: 'primary', icon: 'User', route: '/advisor-dashboard' },
-      { id: 2, label: 'Add Meeting Note', type: 'success', icon: 'EditPen', route: '/advisor-dashboard' },
-      { id: 3, label: 'Generate Report', type: 'info', icon: 'Document', route: '/advisor-reports' }
+      { id: 1, label: 'View Advisees', type: 'primary', icon: User, route: '/advisor-dashboard' },
+      { id: 2, label: 'Add Meeting Note', type: 'success', icon: EditPen, route: '/advisor-dashboard' },
     ],
     admin: [
-      { id: 1, label: 'Manage Users', type: 'primary', icon: 'User', route: '/user-management' },
-      { id: 2, label: 'System Logs', type: 'warning', icon: 'Monitor', route: '/system-logs' },
-      { id: 3, label: 'Backup Data', type: 'danger', icon: 'Download', route: '/backup' }
+      { id: 1, label: 'Manage Users', type: 'primary', icon: User, route: '/user-management' },
+      { id: 2, label: 'System Logs', type: 'warning', icon: Monitor, route: '/system-logs' },
     ]
   }
   return actions[userRole.value] || []
 })
 
-// Methods
+// --- Methods ---
 const navigateTo = (route) => {
   router.push(route)
 }
@@ -406,11 +383,42 @@ const handleQuickAction = (route) => {
   }
 }
 
-// 🐛 Debug method - remove in production
+const fetchUserStats = async () => {
+  try {
+    // MOCK DATA - Replace with actual API calls per role
+    const mockStats = {
+      lecturer: { courses: 5, students: 120, assessments: 25 },
+      student: { enrolledCourses: 6, cgpa: '3.75', rank: '5th' },
+      advisor: { advisees: 30, atRiskStudents: 4, meetings: 8 },
+      admin: { totalUsers: 250, totalCourses: 45 }
+    };
+    stats.value = mockStats[userRole.value] || {};
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    stats.value = {}; // Reset on error
+  }
+}
+
+const fetchRecentActivities = async () => {
+  try {
+    // MOCK DATA - Replace with actual API call
+    recentActivities.value = [
+      { id: 1, description: 'Updated assessment scores for CS101', timestamp: '2025-06-25 10:30', type: 'primary' },
+      { id: 2, description: 'New student enrolled in course', timestamp: '2025-06-25 09:15', type: 'success' },
+    ];
+  } catch (error) { console.error('Error fetching activities:', error); }
+}
+
+// --- Debug Methods (for development only) ---
 const switchRole = (newRole) => {
-  localStorage.setItem('role', newRole)
+  localStorage.setItem('role', newRole) // Simulate login for a different role
   userRole.value = newRole
-  fetchUserStats()
+  // Mock user names for different roles
+  const names = { lecturer: 'Dr. Alan', student: 'Jane Doe', advisor: 'Mrs. Smith', admin: 'Admin' };
+  localStorage.setItem('name', names[newRole]);
+  userName.value = names[newRole];
+  
+  fetchUserStats() // Re-fetch stats for the new role
   ElMessage.success(`Switched to ${newRole} role`)
 }
 
@@ -420,90 +428,21 @@ const clearStorage = () => {
   router.push('/login')
 }
 
-const fetchUserStats = async () => {
-  try {
-    // Get real data from localStorage (set during login)
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    
-    const roleStats = {
-      lecturer: {
-        courses: user.courses_count || 0,
-        students: user.students_count || 0,
-        assessments: user.assessments_count || 0
-      },
-      student: {
-        enrolledCourses: user.enrolled_courses || 0,
-        cgpa: user.cgpa || '0.00',
-        rank: user.rank || 'N/A'
-      },
-      advisor: {
-        advisees: user.advisees_count || 0,
-        atRiskStudents: user.at_risk_count || 0,
-        meetings: user.meetings_count || 0
-      },
-      admin: {
-        totalUsers: user.total_users || 0,
-        totalCourses: user.total_courses || 0,
-        systemHealth: user.system_health || 'Good'
-      }
-    }
-    
-    stats.value = roleStats[userRole.value] || {}
-    
-    console.log('📊 Dashboard stats loaded:', stats.value)
-  } catch (error) {
-    console.error('Error fetching stats:', error)
-    stats.value = {}
-  }
-}
-
-const fetchRecentActivities = async () => {
-  try {
-    // Mock data - replace with actual API calls
-    const mockActivities = [
-      {
-        id: 1,
-        description: 'Updated assessment scores for CS101',
-        timestamp: '2025-06-25 10:30',
-        type: 'primary'
-      },
-      {
-        id: 2,
-        description: 'New student enrolled in course',
-        timestamp: '2025-06-25 09:15',
-        type: 'success'
-      },
-      {
-        id: 3,
-        description: 'Generated monthly report',
-        timestamp: '2025-06-24 16:45',
-        type: 'info'
-      }
-    ]
-    
-    recentActivities.value = mockActivities
-  } catch (error) {
-    console.error('Error fetching activities:', error)
-  }
-}
-
+// --- Lifecycle Hook ---
 onMounted(() => {
-  // Force refresh role detection
-  const storedRole = localStorage.getItem('role') || localStorage.getItem('userRole')
-  const storedName = localStorage.getItem('name') || localStorage.getItem('userName')
+  // Load user info from localStorage on component mount
+  const storedRole = localStorage.getItem('role');
+  const storedName = localStorage.getItem('name');
   
   if (storedRole) {
-    userRole.value = storedRole
-    console.log('🔄 Dashboard mounted - Role detected:', storedRole)
+    userRole.value = storedRole;
   }
-  
   if (storedName) {
-    userName.value = storedName
-    console.log('👤 Dashboard mounted - User:', storedName)
+    userName.value = storedName;
   }
   
-  fetchUserStats()
-  fetchRecentActivities()
+  fetchUserStats();
+  fetchRecentActivities();
 })
 </script>
 
@@ -519,27 +458,14 @@ onMounted(() => {
   border-radius: 16px;
   border: none;
   overflow: hidden;
-}
-
-.welcome-lecturer {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 
-.welcome-student {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
-}
-
-.welcome-advisor {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  color: white;
-}
-
-.welcome-admin {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-  color: white;
-}
+/* Role-specific background gradients */
+.welcome-lecturer { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.welcome-student { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.welcome-advisor { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.welcome-admin { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
 
 .welcome-content {
   display: flex;
@@ -548,220 +474,49 @@ onMounted(() => {
   padding: 20px;
 }
 
-.welcome-text {
-  flex: 1;
-}
+.welcome-text { flex: 1; }
+.welcome-title { font-size: 28px; font-weight: bold; margin: 0 0 8px 0; }
+.welcome-description { font-size: 16px; margin: 0 0 16px 0; opacity: 0.9; }
+.user-info { display: flex; align-items: center; gap: 12px; }
+.user-name { font-weight: 600; font-size: 18px; }
+.welcome-icon { font-size: 64px; opacity: 0.8; }
 
-.welcome-title {
-  font-size: 28px;
-  font-weight: bold;
-  margin: 0 0 8px 0;
-}
+.quick-actions-card { margin-bottom: 24px; border-radius: 12px; }
+.section-title { margin: 0 0 16px 0; color: #333; font-size: 20px; font-weight: 600; }
+.actions-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+.action-button { flex: 1; min-width: 160px; }
 
-.welcome-description {
-  font-size: 16px;
-  margin: 0 0 16px 0;
-  opacity: 0.9;
-}
+.dashboard-content { margin-bottom: 24px; }
+.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
 
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+.stat-card { border-radius: 12px; border: none; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05); }
+.stat-content { display: flex; align-items: center; gap: 16px; padding: 16px; }
+.stat-icon { font-size: 32px; background: #f0f2f5; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.stat-info h4 { margin: 0 0 4px 0; color: #666; font-size: 14px; font-weight: 500; }
+.stat-number { margin: 0; font-size: 24px; font-weight: bold; color: #333; }
+.text-warning { color: #e6a23c; }
+.text-success { color: #67c23a; }
 
-.user-name {
-  font-weight: 600;
-  font-size: 18px;
-}
+.feature-card { border-radius: 12px; border: none; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05); }
+.feature-card h3 { margin: 0 0 20px 0; color: #333; font-size: 20px; font-weight: 600; }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+.feature-item { padding: 20px; border: 1px solid #e9ecef; border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: white; }
+.feature-item:hover { border-color: #409eff; box-shadow: 0 4px 16px rgba(64, 158, 255, 0.1); transform: translateY(-2px); }
+.feature-item h4 { margin: 12px 0 8px 0; color: #333; font-size: 16px; font-weight: 600; }
+.feature-item p { margin: 0; color: #666; font-size: 14px; }
 
-.welcome-icon {
-  font-size: 64px;
-  opacity: 0.8;
-}
+.activity-card { border-radius: 12px; border: none; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05); }
 
-.quick-actions-card {
-  margin-bottom: 24px;
-  border-radius: 12px;
-}
-
-.section-title {
-  margin: 0 0 16px 0;
-  color: #333;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.actions-grid {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.action-button {
-  flex: 1;
-  min-width: 160px;
-}
-
-.dashboard-content {
-  margin-bottom: 24px;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  border-radius: 12px;
-  border: none;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-}
-
-.stat-icon {
-  font-size: 32px;
-  background: #f0f2f5;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stat-info h4 {
-  margin: 0 0 4px 0;
-  color: #666;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.stat-number {
-  margin: 0;
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
-}
-
-.text-warning {
-  color: #e6a23c;
-}
-
-.text-success {
-  color: #67c23a;
-}
-
-.feature-card {
-  border-radius: 12px;
-  border: none;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.feature-card h3 {
-  margin: 0 0 20px 0;
-  color: #333;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-}
-
-.feature-item {
-  padding: 20px;
-  border: 2px solid #f0f2f5;
-  border-radius: 12px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: white;
-}
-
-.feature-item:hover {
-  border-color: #409eff;
-  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.feature-item h4 {
-  margin: 12px 0 8px 0;
-  color: #333;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.feature-item p {
-  margin: 0;
-  color: #666;
-  font-size: 14px;
-}
-
-.activity-card {
-  border-radius: 12px;
-  border: none;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.debug-card {
-  margin-top: 24px;
-  border: 2px solid #f56c6c;
-  border-radius: 12px;
-  background: #fef0f0;
-}
-
-.debug-card h3 {
-  color: #f56c6c;
-  margin: 0 0 16px 0;
-}
-
-.debug-buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
+.debug-card { margin-top: 24px; border: 2px solid #f56c6c; border-radius: 12px; background: #fef0f0; }
+.debug-card h3 { color: #f56c6c; margin: 0 0 16px 0; }
+.debug-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 
 @media (max-width: 768px) {
-  .dashboard-container {
-    padding: 16px;
-  }
-  
-  .welcome-content {
-    flex-direction: column;
-    text-align: center;
-    gap: 16px;
-  }
-  
-  .welcome-icon {
-    font-size: 48px;
-  }
-  
-  .actions-grid {
-    flex-direction: column;
-  }
-  
-  .action-button {
-    width: 100%;
-  }
-  
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .features-grid {
-    grid-template-columns: 1fr;
-  }
+  .dashboard-container { padding: 16px; }
+  .welcome-content { flex-direction: column; text-align: center; gap: 16px; }
+  .welcome-icon { font-size: 48px; }
+  .actions-grid { flex-direction: column; }
+  .action-button { width: 100%; }
+  .dashboard-grid, .features-grid { grid-template-columns: 1fr; }
 }
 </style>
