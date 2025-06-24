@@ -3,11 +3,17 @@
     <el-card shadow="hover" class="main-card">
       <div class="header">
         <h2>User Management</h2>
-        <el-button type="primary" @click="openDialog()">Add User</el-button>
+        <div>
+          <el-button
+            type="info"
+            @click="showLogsDialog"
+            style="margin-right: 10px"
+            >View System Logs</el-button
+          >
+          <el-button type="primary" @click="openDialog()">Add User</el-button>
+        </div>
       </div>
 
-      
-      <!-- 搜索和筛选区域 -->
       <div class="filter-section">
         <el-row :gutter="20">
           <el-col :span="8">
@@ -55,7 +61,6 @@
         </el-row>
       </div>
 
-      <!-- 统计信息 -->
       <div class="stats-section">
         <el-row :gutter="20">
           <el-col :span="6">
@@ -93,7 +98,6 @@
         </el-row>
       </div>
 
-      <!-- 表格视图 -->
       <div v-if="viewMode === 'table'">
         <el-table
           :data="filteredUsers"
@@ -137,7 +141,6 @@
         </el-table>
       </div>
 
-      <!-- 卡片视图 -->
       <div v-else class="card-view">
         <el-row :gutter="20" v-loading="loading">
           <el-col :span="8" v-for="user in filteredUsers" :key="user.id">
@@ -204,21 +207,18 @@
           </el-col>
         </el-row>
 
-        <!-- 无数据显示 -->
         <div v-if="filteredUsers.length === 0 && !loading" class="no-data">
           <el-empty description="No users found" />
         </div>
       </div>
     </el-card>
 
-    <!-- Add/Edit Dialog -->
     <el-dialog
       v-model="dialogVisible"
       :title="isEditing ? 'Edit User' : 'Add User'"
       width="500px"
     >
       <el-form :model="form" ref="formRef" label-width="120px" :rules="rules">
-        <!-- ID (Readonly) -->
         <el-form-item label="ID" v-if="isEditing">
           <el-input v-model="form.id" readonly />
         </el-form-item>
@@ -248,7 +248,6 @@
           </el-select>
         </el-form-item>
 
-        <!-- Role-dependent fields -->
         <el-form-item label="Matric No" v-if="form.role === 'student'">
           <el-input v-model="form.matric_no" placeholder="Matric Number" />
         </el-form-item>
@@ -264,7 +263,6 @@
           </el-select>
         </el-form-item>
 
-        <!-- Password only for create -->
         <el-form-item label="Password" prop="password" v-if="!isEditing">
           <el-input
             v-model="form.password"
@@ -296,6 +294,31 @@
         <el-button type="primary" @click="submitForm">Save</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="logsDialogVisible"
+      title="System Activity Logs"
+      width="70%"
+    >
+      <el-table :data="logs" v-loading="logsLoading" stripe height="50vh">
+        <el-table-column prop="id" label="Log ID" width="80" />
+        <el-table-column prop="action" label="Action" width="150">
+          <template #default="scope">
+            <el-tag :type="getActionTagType(scope.row.action)">
+              {{ scope.row.action }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="details" label="Details" />
+        <el-table-column prop="user_id" label="Admin ID" width="100" />
+        <el-table-column prop="target_user_id" label="Target ID" width="100" />
+        <el-table-column prop="ip_address" label="IP Address" width="140" />
+        <el-table-column prop="created_at" label="Timestamp" width="180" />
+      </el-table>
+      <template #footer>
+        <el-button @click="logsDialogVisible = false">Close</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -315,6 +338,11 @@ const viewMode = ref("table"); // 'table' or 'card'
 const searchQuery = ref("");
 const roleFilter = ref("");
 const statusFilter = ref("");
+
+// --- Refs for System Logs ---
+const logsDialogVisible = ref(false);
+const logsLoading = ref(false);
+const logs = ref([]);
 
 const defaultForm = () => ({
   id: null,
@@ -440,6 +468,76 @@ const fetchUsers = async () => {
     ElMessage.error("Network error while fetching users");
   } finally {
     loading.value = false;
+  }
+};
+
+// --- MODIFIED: Functions to handle System Logs with Fallback ---
+const fetchLogs = async () => {
+  logsLoading.value = true;
+  try {
+    const { data } = await axios.get(
+      "http://localhost:8085/user-management?action=logs"
+    );
+    if (data.success) {
+      logs.value = data.logs;
+    } else {
+      ElMessage.error(data.message || "Failed to load logs");
+    }
+  } catch (err) {
+    // THIS IS THE NEW FALLBACK LOGIC
+    ElMessage.warning("Could not connect to the server. Displaying sample log data.");
+    
+    // Hardcoded data to display when the API call fails
+    const fallbackLogs = [
+      {
+        id: 999,
+        action: 'CREATE_USER',
+        details: "Fallback: Admin created user 'Sample User 1' (ID: 101)",
+        user_id: 1,
+        target_user_id: 101,
+        ip_address: '127.0.0.1',
+        created_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      },
+      {
+        id: 998,
+        action: 'UPDATE_USER',
+        details: "Fallback: Admin updated user 'Sample User 2' (ID: 102)",
+        user_id: 1,
+        target_user_id: 102,
+        ip_address: '127.0.0.1',
+        created_at: new Date(Date.now() - 60000).toISOString().replace('T', ' ').substring(0, 19),
+      },
+      {
+        id: 997,
+        action: 'DELETE_USER',
+        details: "Fallback: Admin deleted user 'Old Sample User' (ID: 103)",
+        user_id: 1,
+        target_user_id: 103,
+        ip_address: '127.0.0.1',
+        created_at: new Date(Date.now() - 120000).toISOString().replace('T', ' ').substring(0, 19),
+      },
+    ];
+    logs.value = fallbackLogs;
+  } finally {
+    logsLoading.value = false;
+  }
+};
+
+const showLogsDialog = () => {
+  logsDialogVisible.value = true;
+  fetchLogs();
+};
+
+const getActionTagType = (action) => {
+  switch (action) {
+    case "CREATE_USER":
+      return "success";
+    case "UPDATE_USER":
+      return "warning";
+    case "DELETE_USER":
+      return "danger";
+    default:
+      return "info";
   }
 };
 
