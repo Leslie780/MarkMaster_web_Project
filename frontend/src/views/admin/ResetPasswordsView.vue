@@ -6,7 +6,6 @@
         <p>Please enter your registered email and a new password.</p>
       </div>
 
-      
       <el-form :model="form" @submit.prevent="onSubmit" label-width="120px">
         <el-form-item label="Email">
           <el-input v-model="form.email" autocomplete="off" />
@@ -15,15 +14,21 @@
         <el-form-item label="New Password">
           <el-input
             v-model="form.new_password"
-            type="password"
+            :type="showPassword ? 'text' : 'password'"
             autocomplete="new-password"
-          />
+          >
+            <template #suffix>
+              <el-icon @click="togglePassword" class="password-toggle">
+                <component :is="showPassword ? Eye : EyeClosed" />
+              </el-icon>
+            </template>
+          </el-input>
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" native-type="submit" block
-            >Reset Password</el-button
-          >
+          <el-button type="primary" native-type="submit" block>
+            Reset Password
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -31,9 +36,10 @@
 </template>
 
 <script setup>
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
+import { Eye, EyeClosed } from "@element-plus/icons-vue";
 
 const router = useRouter();
 
@@ -41,6 +47,12 @@ const form = reactive({
   email: "",
   new_password: "",
 });
+
+const showPassword = ref(false);
+
+function togglePassword() {
+  showPassword.value = !showPassword.value;
+}
 
 async function onSubmit() {
   if (!form.email || !form.new_password) {
@@ -164,5 +176,15 @@ async function onSubmit() {
 * {
   scrollbar-width: thin;
   scrollbar-color: #c1b7a6 #f9f6f1;
+}
+/* 给密码切换的眼睛图标单独设色 */
+.el-icon.password-toggle {
+  cursor: pointer;
+  color: #606266; /* Element Plus 默认 icon 灰色 */
+  transition: color 0.2s;
+}
+
+.el-icon.password-toggle:hover {
+  color: #d6a77a; /* 你整体的主题色 */
 }
 </style>
