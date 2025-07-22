@@ -147,8 +147,8 @@
         </el-card>
       </template>
 
-      <!-- Advisor Dashboard -->
-      <template v-if="userRole === 'advisor'">
+      <!-- ✅ FIXED: Academic Advisor Dashboard -->
+      <template v-if="userRole === 'academic advisor'">
         <div class="dashboard-grid">
           <el-card class="stat-card">
             <div class="stat-content">
@@ -184,17 +184,17 @@
         <el-card class="feature-card">
           <h3>🛡️ Advisor Tools</h3>
           <div class="features-grid">
-            <div class="feature-item" @click="navigateTo('/advisor-dashboard')">
+            <div class="feature-item" @click="navigateTo('/advisorworkspace')">
               <el-icon size="30"><User /></el-icon>
               <h4>Manage Advisees</h4>
               <p>Monitor student progress</p>
             </div>
-            <div class="feature-item" @click="navigateTo('/advisor-dashboard')">
+            <div class="feature-item" @click="navigateTo('/advisorworkspace')">
               <el-icon size="30"><Document /></el-icon>
               <h4>Generate Reports</h4>
               <p>Create consultation reports</p>
             </div>
-            <div class="feature-item" @click="navigateTo('/advisor-dashboard')">
+            <div class="feature-item" @click="navigateTo('/advisorworkspace')">
               <el-icon size="30"><Warning /></el-icon>
               <h4>At-Risk Students</h4>
               <p>Identify struggling students</p>
@@ -240,7 +240,7 @@
         <el-card class="feature-card">
           <h3>🔧 Admin Tools</h3>
           <div class="features-grid">
-            <div class="feature-item" @click="navigateTo('/user-management')">
+            <div class="feature-item" @click="navigateTo('/admin/user-management')">
               <el-icon size="30"><User /></el-icon>
               <h4>User Management</h4>
               <p>Manage all system users</p>
@@ -280,10 +280,12 @@
       <h3>🐛 Debug Panel (Development)</h3>
       <p><strong>Current Role:</strong> {{ userRole }}</p>
       <p><strong>Current User:</strong> {{ userName }}</p>
+      <p><strong>Role from localStorage:</strong> {{ localStorage.getItem('role') }}</p>
+      <p><strong>Name from localStorage:</strong> {{ localStorage.getItem('name') }}</p>
       <div class="debug-buttons">
         <el-button size="small" @click="switchRole('lecturer')">Switch to Lecturer</el-button>
         <el-button size="small" @click="switchRole('student')">Switch to Student</el-button>
-        <el-button size="small" @click="switchRole('advisor')">Switch to Advisor</el-button>
+        <el-button size="small" @click="switchRole('academic advisor')">Switch to Advisor</el-button>
         <el-button size="small" @click="switchRole('admin')">Switch to Admin</el-button>
       </div>
       <el-button size="small" type="danger" @click="clearStorage">Clear Storage & Logout</el-button>
@@ -314,15 +316,14 @@ const userName = ref('Guest')
 const stats = ref({})
 const recentActivities = ref([])
 // Show debug panel only in development mode
-// FIXED: Changed from import.meta.env.DEV to a more compatible alternative
 const showDebug = ref(process.env.NODE_ENV === 'development')
 
-// --- Computed Properties for Dynamic UI ---
+// --- ✅ FIXED: Computed Properties for Dynamic UI ---
 const welcomeMessage = computed(() => {
   const messages = {
     lecturer: `Welcome back, ${userName.value}!`,
     student: `Hello, ${userName.value}!`,
-    advisor: `Good day, ${userName.value}!`,
+    'academic advisor': `Good day, ${userName.value}!`,  // ✅ Fixed
     admin: `Welcome, Administrator!`
   }
   return messages[userRole.value] || 'Welcome!'
@@ -332,20 +333,35 @@ const roleDescription = computed(() => {
   const descriptions = {
     lecturer: 'Manage your courses, assessments, and track student performance.',
     student: 'View your academic progress, compare performance, and track your CGPA.',
-    advisor: 'Monitor your advisees\' progress and provide academic guidance.',
+    'academic advisor': 'Monitor your advisees\' progress and provide academic guidance.',  // ✅ Fixed
     admin: 'Manage system users, courses, and monitor overall system health.'
   }
   return descriptions[userRole.value] || 'Welcome to the Course Marking System'
 })
 
 const roleIcon = computed(() => ({
-  lecturer: '👨‍🏫', student: '🎓', advisor: '🛡️', admin: '⚙️'
+  lecturer: '👨‍🏫', 
+  student: '🎓', 
+  'academic advisor': '🛡️',  // ✅ Fixed
+  admin: '⚙️'
 }[userRole.value] || '👤'))
 
-const roleClass = computed(() => `welcome-${userRole.value}`)
+const roleClass = computed(() => {
+  // Convert role to safe CSS class name
+  const roleMap = {
+    'academic advisor': 'advisor',
+    'lecturer': 'lecturer',
+    'student': 'student',
+    'admin': 'admin'
+  }
+  return `welcome-${roleMap[userRole.value] || 'default'}`
+})
 
 const roleTagType = computed(() => ({
-  lecturer: 'primary', student: 'success', advisor: 'warning', admin: 'danger'
+  lecturer: 'primary', 
+  student: 'success', 
+  'academic advisor': 'warning',  // ✅ Fixed
+  admin: 'danger'
 }[userRole.value] || 'info'))
 
 const quickActions = computed(() => {
@@ -358,12 +374,12 @@ const quickActions = computed(() => {
       { id: 1, label: 'View My Grades', type: 'primary', icon: View, route: '/student-dashboard' },
       { id: 2, label: 'Calculate CGPA', type: 'success', icon: Calculator, route: '/cgpa-calculator' },
     ],
-    advisor: [
-      { id: 1, label: 'View Advisees', type: 'primary', icon: User, route: '/advisor-dashboard' },
-      { id: 2, label: 'Add Meeting Note', type: 'success', icon: EditPen, route: '/advisor-dashboard' },
+    'academic advisor': [  // ✅ Fixed
+      { id: 1, label: 'View Advisees', type: 'primary', icon: User, route: '/advisorworkspace' },
+      { id: 2, label: 'Add Meeting Note', type: 'success', icon: EditPen, route: '/advisorworkspace' },
     ],
     admin: [
-      { id: 1, label: 'Manage Users', type: 'primary', icon: User, route: '/user-management' },
+      { id: 1, label: 'Manage Users', type: 'primary', icon: User, route: '/admin/user-management' },
       { id: 2, label: 'System Logs', type: 'warning', icon: Monitor, route: '/system-logs' },
     ]
   }
@@ -389,7 +405,7 @@ const fetchUserStats = async () => {
     const mockStats = {
       lecturer: { courses: 5, students: 120, assessments: 25 },
       student: { enrolledCourses: 6, cgpa: '3.75', rank: '5th' },
-      advisor: { advisees: 30, atRiskStudents: 4, meetings: 8 },
+      'academic advisor': { advisees: 30, atRiskStudents: 4, meetings: 8 },  // ✅ Fixed
       admin: { totalUsers: 250, totalCourses: 45 }
     };
     stats.value = mockStats[userRole.value] || {};
@@ -409,16 +425,23 @@ const fetchRecentActivities = async () => {
   } catch (error) { console.error('Error fetching activities:', error); }
 }
 
-// --- Debug Methods (for development only) ---
+// --- ✅ FIXED: Debug Methods (for development only) ---
 const switchRole = (newRole) => {
-  localStorage.setItem('role', newRole) // Simulate login for a different role
+  localStorage.setItem('role', newRole)
   userRole.value = newRole
-  // Mock user names for different roles
-  const names = { lecturer: 'Dr. Alan', student: 'Jane Doe', advisor: 'Mrs. Smith', admin: 'Admin' };
+  
+  // Mock user names for different roles  
+  const names = { 
+    lecturer: 'Dr. Alan', 
+    student: 'Jane Doe', 
+    'academic advisor': 'Mrs. Smith',  // ✅ Fixed to match database
+    admin: 'Admin' 
+  };
+  
   localStorage.setItem('name', names[newRole]);
   userName.value = names[newRole];
   
-  fetchUserStats() // Re-fetch stats for the new role
+  fetchUserStats()
   ElMessage.success(`Switched to ${newRole} role`)
 }
 
@@ -428,18 +451,45 @@ const clearStorage = () => {
   router.push('/login')
 }
 
-// --- Lifecycle Hook ---
+// --- ✅ ENHANCED: Lifecycle Hook with Better Debugging ---
 onMounted(() => {
+  console.log('🔍 DASHBOARD onMounted DEBUG:');
+  
   // Load user info from localStorage on component mount
   const storedRole = localStorage.getItem('role');
   const storedName = localStorage.getItem('name');
+  const storedUser = localStorage.getItem('user');
+  
+  console.log('  storedRole from localStorage:', storedRole);
+  console.log('  storedName from localStorage:', storedName);
+  console.log('  storedUser from localStorage:', storedUser);
+  console.log('  Current route path:', router.currentRoute.value.path);
+  console.log('  userRole.value before:', userRole.value);
   
   if (storedRole) {
     userRole.value = storedRole;
+    console.log('  userRole.value after setting:', userRole.value);
   }
   if (storedName) {
     userName.value = storedName;
   }
+  
+  // Additional debugging for parsed user data
+  if (storedUser) {
+    try {
+      const parsedUser = JSON.parse(storedUser);
+      console.log('  Parsed user object:', parsedUser);
+      console.log('  Parsed user role:', parsedUser.role);
+    } catch (e) {
+      console.error('  Error parsing stored user:', e);
+    }
+  }
+  
+  // Check what template should render
+  console.log('  Should show student template?:', userRole.value === 'student');
+  console.log('  Should show lecturer template?:', userRole.value === 'lecturer');
+  console.log('  Should show advisor template?:', userRole.value === 'academic advisor');
+  console.log('  Should show admin template?:', userRole.value === 'admin');
   
   fetchUserStats();
   fetchRecentActivities();
@@ -466,6 +516,7 @@ onMounted(() => {
 .welcome-student { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
 .welcome-advisor { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
 .welcome-admin { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+.welcome-default { background: linear-gradient(135deg, #8e9eab 0%, #eef2f3 100%); }
 
 .welcome-content {
   display: flex;

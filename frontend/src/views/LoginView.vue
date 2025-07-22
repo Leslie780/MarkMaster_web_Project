@@ -4,7 +4,6 @@
       <div class="login-header">
         <h2>Login - MarkMaster</h2>
       </div>
-
       <div class="form-container">
         <div class="form-group">
           <label>Role</label>
@@ -16,7 +15,6 @@
             <option value="admin">Admin</option>
           </select>
         </div>
-
         <div class="form-group">
           <label>Identifier</label>
           <input
@@ -27,7 +25,6 @@
             @keyup.enter="performLogin"
           />
         </div>
-
         <div class="form-group">
           <label>Password</label>
           <input
@@ -38,7 +35,6 @@
             @keyup.enter="performLogin"
           />
         </div>
-
         <div class="form-group">
           <button
             @click="performLogin"
@@ -48,7 +44,6 @@
             {{ isSubmitting ? "Logging in..." : "Login" }}
           </button>
         </div>
-
         <div class="links">
           <button type="button" @click="navigateToRegister" class="link-button">
             Don't have an account? Register
@@ -61,7 +56,6 @@
             Forgot Password?
           </button>
         </div>
-
         <!-- Status Messages -->
         <div v-if="statusMessage" :class="['status-message', statusType]">
           {{ statusMessage }}
@@ -95,39 +89,31 @@ export default {
         this.statusType = "";
       }, 5000);
     },
-
     validateInput() {
       if (!this.loginData.role) {
         this.showMessage("Please select your role", "error");
         return false;
       }
-
       if (!this.loginData.identifier) {
         this.showMessage("Please enter your identifier", "error");
         return false;
       }
-
       if (!this.loginData.password) {
         this.showMessage("Please enter your password", "error");
         return false;
       }
-
       return true;
     },
-
     async performLogin() {
       if (!this.validateInput()) return;
-
       this.isSubmitting = true;
       this.showMessage("Logging in...", "info");
-
       try {
         const requestData = {
           identifier: this.loginData.identifier.trim(),
           password: this.loginData.password,
           role: this.loginData.role,
         };
-
         const response = await fetch("http://localhost:8085/login", {
           method: "POST",
           headers: {
@@ -136,10 +122,8 @@ export default {
           },
           body: JSON.stringify(requestData),
         });
-
         const responseData = await response.json();
         console.log("Login response:", response.status, responseData);
-
         if (response.ok && responseData.success) {
           this.handleLoginSuccess(responseData.user);
         } else {
@@ -158,11 +142,30 @@ export default {
     },
     handleLoginSuccess(userData) {
       try {
-        // Store user data safely
+        console.log('🔍 LOGIN SUCCESS DEBUG:');
+        console.log('API response userData:', userData);
+        console.log('User role from API:', userData.role);
+        
+        // Store complete user data
         localStorage.setItem("user", JSON.stringify(userData));
-
+        
+        // ✅ FIX: Store individual items that DashboardView expects
+        localStorage.setItem('role', userData.role);
+        localStorage.setItem('name', userData.name);
+        
+        // Debug what got stored
+        console.log('Stored in localStorage:');
+        console.log('  user:', localStorage.getItem('user'));
+        console.log('  role:', localStorage.getItem('role'));
+        console.log('  name:', localStorage.getItem('name'));
+        
+        // Debug parsed user data
+        const storedUser = JSON.parse(localStorage.getItem('user'));
+        console.log('Parsed user data:', storedUser);
+        console.log('Parsed role:', storedUser.role);
+        
         this.showMessage("Login successful! Redirecting...", "success");
-
+        
         // Navigate after a short delay
         setTimeout(() => {
           this.navigateBasedOnRole(userData.role);
@@ -172,16 +175,22 @@ export default {
         this.showMessage("Login successful but navigation failed", "error");
       }
     },
-
     navigateBasedOnRole(userRole) {
       try {
+        console.log('🔍 NAVIGATION DEBUG:');
+        console.log('  Navigating based on role:', userRole);
+        
         if (userRole === "admin") {
+          console.log('  -> Redirecting to admin panel');
           this.$router.push("/admin/user-management");
         } else if (userRole === "lecturer") {
+          console.log('  -> Redirecting to courses');
           this.$router.push("/courses");
-        } else if (userRole === "academicAdvisor") {
+        } else if (userRole === "academic advisor") {
+          console.log('  -> Redirecting to advisor workspace');
           this.$router.push("/advisorworkspace");
         } else {
+          console.log('  -> Redirecting to dashboard (default for students)');
           this.$router.push("/dashboard");
         }
       } catch (error) {
@@ -190,11 +199,9 @@ export default {
         window.location.href = "/dashboard";
       }
     },
-
     navigateToRegister() {
       this.$router.push("/register");
     },
-
     navigateToForgotPassword() {
       this.$router.push("/forget-password");
     },
@@ -213,7 +220,6 @@ export default {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   font-size: 16px;
 }
-
 .login-card {
   width: 400px;
   padding: 32px;
@@ -221,12 +227,10 @@ export default {
   background-color: #fff9f2;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
-
 .login-header {
   margin-bottom: 32px;
   text-align: center;
 }
-
 .login-header h2 {
   font-weight: 700;
   font-size: 30px;
@@ -234,25 +238,21 @@ export default {
   letter-spacing: 1px;
   margin: 0;
 }
-
 .form-container {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
-
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
 .form-group label {
   font-weight: 600;
   color: #7e7e7e;
   font-size: 14px;
 }
-
 .form-input,
 .form-select {
   padding: 12px;
@@ -265,13 +265,11 @@ export default {
   width: 100%;
   box-sizing: border-box;
 }
-
 .form-input:focus,
 .form-select:focus {
   outline: none;
   border-color: #d6a77a;
 }
-
 .login-button {
   width: 100%;
   padding: 12px;
@@ -284,24 +282,20 @@ export default {
   cursor: pointer;
   font-size: 16px;
 }
-
 .login-button:hover:not(:disabled) {
   background-color: #cfd8e3;
   color: #1a2533;
 }
-
 .login-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
-
 .links {
   display: flex;
   flex-direction: column;
   gap: 8px;
   align-items: flex-end;
 }
-
 .link-button {
   background: none;
   border: none;
@@ -311,12 +305,10 @@ export default {
   padding: 4px 0;
   font-size: 14px;
 }
-
 .link-button:hover {
   color: #d6a77a;
   text-decoration: underline;
 }
-
 .status-message {
   padding: 10px;
   border-radius: 5px;
@@ -324,19 +316,16 @@ export default {
   text-align: center;
   margin-top: 10px;
 }
-
 .status-message.success {
   background-color: #d4edda;
   color: #155724;
   border: 1px solid #c3e6cb;
 }
-
 .status-message.error {
   background-color: #f8d7da;
   color: #721c24;
   border: 1px solid #f5c6cb;
 }
-
 .status-message.info {
   background-color: #d1ecf1;
   color: #0c5460;
